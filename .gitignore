@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Environment variables (NEVER commit these)
+.env
+.env.local
+.env.production
+
+# Native builds
+android/
+ios/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.cer
+*.mobileprovision
+
+# macOS
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# TypeScript
+*.tsbuildinfo
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Testing
+coverage/
