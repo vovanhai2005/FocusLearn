@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MotiView } from "moti";
@@ -13,30 +14,9 @@ import { router } from "expo-router";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useTeacherStore } from "@/store/useTeacherStore";
 import { Colors, Shadow } from "@/constants/theme";
 
-// ─────────────────────────────────────────────────────────────
-// MOCK DATA
-// ─────────────────────────────────────────────────────────────
-
-const MOCK_STATS = {
-  totalStudents: 24,
-  activeToday: 18,
-  avgCompletion: 72,
-  coursesPublished: 4,
-};
-
-const MOCK_STUDENTS_ATTENTION = [
-  { id: "s1", name: "Minh Tuấn",   avatar: "🐼", xp: 12,  streak: 0, completion: 15 },
-  { id: "s2", name: "Lan Anh",     avatar: "🦋", xp: 5,   streak: 0, completion: 8  },
-  { id: "s3", name: "Gia Bảo",     avatar: "🦁", xp: 20,  streak: 1, completion: 22 },
-];
-
-const MOCK_TOP_STUDENTS = [
-  { id: "t1", name: "Ngọc Hân",    avatar: "🦊", xp: 340, streak: 7, completion: 95 },
-  { id: "t2", name: "Đức Khải",    avatar: "🚀", xp: 280, streak: 5, completion: 88 },
-  { id: "t3", name: "Phương Linh", avatar: "⭐", xp: 220, streak: 4, completion: 75 },
-];
 
 // ─────────────────────────────────────────────────────────────
 // STAT TILE
@@ -137,7 +117,11 @@ function StudentRow({
 export default function DashboardScreen() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const isLoading = useAuthStore((s) => s.isLoading);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
+  const { stats, isLoading: isTeacherLoading } = useTeacherStore((s) => ({
+    stats: s.stats,
+    isLoading: s.isLoading,
+  }));
 
   const firstName = user?.name?.split(" ").at(-1) ?? "giáo viên";
 
@@ -190,64 +174,100 @@ export default function DashboardScreen() {
           <View className="flex-row items-center gap-2 bg-white bg-opacity-15 rounded-xl px-4 py-2 self-start">
             <View className="w-2 h-2 rounded-full bg-success" />
             <Text className="text-sm font-semibold text-white">
-              {MOCK_STATS.activeToday}/{MOCK_STATS.totalStudents} học sinh đang học hôm nay
+              {stats.activeToday}/{stats.totalStudents} học sinh đang học hôm nay
             </Text>
           </View>
         </MotiView>
 
-        <View className="px-5 pt-6 gap-6">
-          {/* ── Stats grid ──────────────────────────────────── */}
-          <View className="gap-3">
-            <Text className="text-2xl font-extrabold text-text">📊 Tổng quan</Text>
-            <View className="flex-row gap-3">
-              <StatTile emoji="👩‍🎓" value={MOCK_STATS.totalStudents} label="Học sinh"        color={Colors.primary.DEFAULT} index={0} />
-              <StatTile emoji="⚡"   value={`${MOCK_STATS.avgCompletion}%`} label="Tỷ lệ hoàn thành" color={Colors.success.DEFAULT} index={1} />
-              <StatTile emoji="📚"   value={MOCK_STATS.coursesPublished}    label="Khóa học"         color={Colors.warning.DEFAULT} index={2} />
-            </View>
+        {isTeacherLoading ? (
+          <View className="flex-1 items-center justify-center py-12">
+            <ActivityIndicator size="large" color={Colors.primary.DEFAULT} />
           </View>
-
-          {/* ── Students needing attention ──────────────────── */}
-          <View className="gap-3">
-            <View className="flex-row items-center gap-2">
-              <Text className="text-2xl font-extrabold text-text">⚠️ Cần chú ý</Text>
-              <Badge label={`${MOCK_STUDENTS_ATTENTION.length}`} variant="error" size="sm" />
-            </View>
-            <Text className="text-sm text-text-muted -mt-1">
-              Học sinh có tiến độ thấp hoặc chưa học hôm nay
+        ) : stats.totalStudents === 0 ? (
+          <View className="px-5 pt-6 items-center gap-3 py-12">
+            <Text style={{ fontSize: 48 }}>📚</Text>
+            <Text className="text-lg font-bold text-text">Chưa có học sinh nào</Text>
+            <Text className="text-sm text-text-muted text-center">
+              Chia sẻ mã truy cập để học sinh của bạn tham gia lớp học
             </Text>
-            <View className="gap-2.5">
-              {MOCK_STUDENTS_ATTENTION.map((s, i) => (
-                <StudentRow key={s.id} {...s} variant="attention" index={i} />
-              ))}
-            </View>
           </View>
-
-          {/* ── Top students ────────────────────────────────── */}
-          <View className="gap-3">
-            <Text className="text-2xl font-extrabold text-text">🏆 Học sinh xuất sắc</Text>
-            <View className="gap-2.5">
-              {MOCK_TOP_STUDENTS.map((s, i) => (
-                <StudentRow key={s.id} {...s} variant="top" index={i} />
-              ))}
+        ) : (
+          <View className="px-5 pt-6 gap-6 pb-6">
+            {/* ── Stats grid ──────────────────────────────────── */}
+            <View className="gap-3">
+              <Text className="text-2xl font-extrabold text-text">📊 Tổng quan</Text>
+              <View className="flex-row gap-3">
+                <StatTile emoji="👩‍🎓" value={stats.totalStudents} label="Học sinh"        color={Colors.primary.DEFAULT} index={0} />
+                <StatTile emoji="⚡"   value={`${stats.avgCompletionRate}%`} label="Tỷ lệ hoàn thành" color={Colors.success.DEFAULT} index={1} />
+                <StatTile emoji="📚"   value={stats.coursesPublished}    label="Khóa học"         color={Colors.warning.DEFAULT} index={2} />
+              </View>
             </View>
-          </View>
 
-          {/* ── Quick action ────────────────────────────────── */}
-          <MotiView
-            from={{ opacity: 0, translateY: 8 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ delay: 650, type: "spring", damping: 22 }}
-          >
-            <Button
-              label="Tạo khóa học mới"
-              leftEmoji="➕"
-              variant="primary"
-              size="lg"
-              fullWidth
-              onPress={() => router.push("/(teacher)/create")}
-            />
-          </MotiView>
-        </View>
+            {/* ── Students needing attention ──────────────────── */}
+            {stats.studentsNeedingAttention.length > 0 && (
+              <View className="gap-3">
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-2xl font-extrabold text-text">⚠️ Cần chú ý</Text>
+                  <Badge label={`${stats.studentsNeedingAttention.length}`} variant="error" size="sm" />
+                </View>
+                <Text className="text-sm text-text-muted -mt-1">
+                  Học sinh có tiến độ thấp hoặc chưa học hôm nay
+                </Text>
+                <View className="gap-2.5">
+                  {stats.studentsNeedingAttention.map((s, i) => (
+                    <StudentRow
+                      key={s.user.id}
+                      name={s.user.name}
+                      avatar={s.user.avatarEmoji}
+                      xp={s.xp}
+                      streak={s.streak}
+                      completion={Math.round(s.completionRate)}
+                      variant="attention"
+                      index={i}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* ── Top students ────────────────────────────────── */}
+            {stats.topStudents.length > 0 && (
+              <View className="gap-3">
+                <Text className="text-2xl font-extrabold text-text">🏆 Học sinh xuất sắc</Text>
+                <View className="gap-2.5">
+                  {stats.topStudents.map((s, i) => (
+                    <StudentRow
+                      key={s.user.id}
+                      name={s.user.name}
+                      avatar={s.user.avatarEmoji}
+                      xp={s.xp}
+                      streak={s.streak}
+                      completion={Math.round(s.completionRate)}
+                      variant="top"
+                      index={i}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* ── Quick action ────────────────────────────────── */}
+            <MotiView
+              from={{ opacity: 0, translateY: 8 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ delay: 650, type: "spring", damping: 22 }}
+            >
+              <Button
+                label="Tạo khóa học mới"
+                leftEmoji="➕"
+                variant="primary"
+                size="lg"
+                fullWidth
+                onPress={() => router.push("/(teacher)/create")}
+              />
+            </MotiView>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

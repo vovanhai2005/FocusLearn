@@ -159,7 +159,10 @@ npx supabase gen types typescript --project-id YOUR_PROJECT_ID > lib/database.ty
 ### 6. Khởi động ứng dụng
 
 ```bash
-# Khởi động Expo dev server
+# Khởi động Expo dev server (tự động clear cache)
+npm start -- --clear
+
+# Khởi động với cache từ lần trước
 npm start
 
 # Chạy trên Android
@@ -172,7 +175,25 @@ npm run ios
 npm run web
 ```
 
+**Các lựa chọn khác:**
+
+```bash
+# Clear cache và restart
+npm start -- --clear
+
+# Clear watchman (macOS only)
+watchman watch-del-all && npm start
+
+# Clean Expo cache hoàn toàn
+rm -rf node_modules/.cache && npm start
+```
+
 Quét QR code bằng **Expo Go** hoặc nhấn `a` (Android) / `i` (iOS) để mở trên emulator.
+
+**Khi gặp lỗi:**
+- Thêm cờ `--clear` khi khởi động: `npm start -- --clear`
+- Xóa folder `.expo` (Expo cache): `rm -rf .expo`
+- Restart app trong Expo Go (nhấn R hai lần)
 
 ---
 

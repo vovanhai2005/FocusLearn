@@ -113,31 +113,37 @@ export interface Database {
         Row: UsersRow;
         Insert: Omit<UsersRow, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<UsersRow, "id" | "created_at" | "updated_at">>;
+        Relationships: [];
       };
       courses: {
         Row: CoursesRow;
         Insert: Omit<CoursesRow, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<CoursesRow, "id" | "created_at" | "updated_at">>;
+        Relationships: [];
       };
       lessons: {
         Row: LessonsRow;
         Insert: Omit<LessonsRow, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<LessonsRow, "id" | "created_at" | "updated_at">>;
+        Relationships: [];
       };
       progress: {
         Row: ProgressRow;
         Insert: Omit<ProgressRow, "id" | "created_at" | "updated_at">;
         Update: Partial<Omit<ProgressRow, "id" | "created_at" | "updated_at">>;
+        Relationships: [];
       };
       lesson_progress: {
         Row: LessonProgressRow;
         Insert: Omit<LessonProgressRow, "id">;
         Update: Partial<Omit<LessonProgressRow, "id">>;
+        Relationships: [];
       };
       xp_logs: {
         Row: XPLogsRow;
         Insert: Omit<XPLogsRow, "id">;
         Update: never;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

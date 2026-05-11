@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type { User, Role } from "@/types";
 import { supabase, type Database } from "@/lib/supabase";
 import { AvatarEmojis } from "@/constants/theme";
+import { useProgressStore } from "@/store/useProgressStore";
 
 type UsersRow = Database["public"]["Tables"]["users"]["Row"];
 
@@ -155,6 +156,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   /** Sign out and clear state */
   logout: async () => {
     set({ isLoading: true });
+
+    // Sync progress to Supabase before clearing local state
+    const user = get().user;
+    if (user?.id) {
+      try {
+        await useProgressStore.getState().syncProgressToSupabase(user.id);
+      } catch (err) {
+        console.error("[logout] Failed to sync progress:", err instanceof Error ? err.message : String(err));
+        // Continue with logout even if sync fails
+      }
+    }
+
     await supabase.auth.signOut();
     set({
       user: null,

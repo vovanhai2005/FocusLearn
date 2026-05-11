@@ -14,6 +14,10 @@ import { MotiView } from "moti";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Colors, Shadow } from "@/constants/theme";
+import { supabase, type Database } from "@/lib/supabase";
+import { useAuthStore } from "@/store/useAuthStore";
+
+type CourseInsert = Database["public"]["Tables"]["courses"]["Insert"];
 
 // ─────────────────────────────────────────────────────────────
 // MOCK OPTIONS
@@ -25,12 +29,12 @@ const EMOJI_OPTIONS = [
 ];
 
 const COLOR_OPTIONS = [
-  { label: "Tím",    value: Colors.primary.DEFAULT,   subtle: Colors.primary.subtle   },
-  { label: "Xanh lá", value: Colors.success.DEFAULT,  subtle: Colors.success.subtle   },
-  { label: "Cam",    value: Colors.secondary.DEFAULT,  subtle: Colors.secondary.subtle },
-  { label: "Vàng",   value: Colors.warning.DEFAULT,   subtle: Colors.warning.subtle   },
-  { label: "Xanh dương", value: Colors.info.DEFAULT,  subtle: Colors.info.subtle      },
-  { label: "Đỏ",    value: Colors.error.DEFAULT,      subtle: Colors.error.subtle     },
+  { key: "primary",   label: "Tím",        value: Colors.primary.DEFAULT,   subtle: Colors.primary.subtle   },
+  { key: "success",   label: "Xanh lá",    value: Colors.success.DEFAULT,   subtle: Colors.success.subtle   },
+  { key: "secondary", label: "Cam",        value: Colors.secondary.DEFAULT,  subtle: Colors.secondary.subtle },
+  { key: "warning",   label: "Vàng",       value: Colors.warning.DEFAULT,   subtle: Colors.warning.subtle   },
+  { key: "info",      label: "Xanh dương", value: Colors.info.DEFAULT,      subtle: Colors.info.subtle      },
+  { key: "error",     label: "Đỏ",         value: Colors.error.DEFAULT,     subtle: Colors.error.subtle     },
 ];
 
 const DIFFICULTY_OPTIONS = [
@@ -56,12 +60,15 @@ function SectionHeader({ label }: { label: string }) {
 // ─────────────────────────────────────────────────────────────
 
 export default function CreateScreen() {
+  const user = useAuthStore((s) => s.user);
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedEmoji, setSelectedEmoji] = useState(EMOJI_OPTIONS[0]);
   const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0]);
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const canCreate = title.trim().length >= 3;
 
@@ -70,17 +77,35 @@ export default function CreateScreen() {
   const previewBorder = selectedColor.value;
 
   async function handleCreate() {
-    if (!canCreate) return;
+    if (!canCreate || !user) return;
     setIsCreating(true);
+    setCreateError(null);
 
-    // TODO: replace with Supabase insert
-    await new Promise((res) => setTimeout(res, 1200));
+    const payload: CourseInsert = {
+      title: title.trim(),
+      description: description.trim(),
+      emoji: selectedEmoji,
+      color_key: selectedColor.key,
+      teacher_id: user.id,
+      difficulty,
+      total_lessons: 0,
+      estimated_minutes: 0,
+      tags: [],
+      is_published: true,
+    };
+    const { error } = await supabase.from("courses").insert(payload);
+
     setIsCreating(false);
+
+    if (error) {
+      setCreateError("Không thể tạo khóa học. Vui lòng thử lại.");
+      return;
+    }
 
     Alert.alert(
       "🎉 Tạo thành công!",
-      `Khóa học "${title}" đã được tạo. Bạn có thể thêm bài học ngay bây giờ.`,
-      [{ text: "Tuyệt!", onPress: () => { setTitle(""); setDescription(""); } }]
+      `Khóa học "${title.trim()}" đã được tạo. Bạn có thể thêm bài học ngay bây giờ.`,
+      [{ text: "Tuyệt!", onPress: () => { setTitle(""); setDescription(""); setCreateError(null); } }]
     );
   }
 
@@ -318,6 +343,9 @@ export default function CreateScreen() {
                 <Text className="text-sm text-text-muted text-center mt-2">
                   Tên khóa học phải có ít nhất 3 ký tự
                 </Text>
+              )}
+              {createError && (
+                <Text className="text-sm text-error text-center mt-2">{createError}</Text>
               )}
             </MotiView>
           </View>

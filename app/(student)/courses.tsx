@@ -5,18 +5,28 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { MotiView } from "moti";
 import { Colors, Shadow } from "@/constants/theme";
 import { useProgressStore } from "@/store/useProgressStore";
+import { useCoursesStore } from "@/store/useCoursesStore";
 import { MOCK_COURSES } from "@/constants/mockData";
 
 // ─────────────────────────────────────────────────────────────
-// MOCK DATA
+// HELPERS
 // ─────────────────────────────────────────────────────────────
 
+const COLOR_MAP: Record<string, { color: string; subtle: string }> = {
+  primary: { color: Colors.primary.DEFAULT, subtle: Colors.primary.subtle },
+  success: { color: Colors.success.DEFAULT, subtle: Colors.success.subtle },
+  secondary: { color: Colors.secondary.DEFAULT, subtle: Colors.secondary.subtle },
+  warning: { color: Colors.warning.DEFAULT, subtle: Colors.warning.subtle },
+  info: { color: Colors.info.DEFAULT, subtle: Colors.info.subtle },
+  error: { color: Colors.error.DEFAULT, subtle: Colors.error.subtle },
+};
 
 const FILTERS = ["Tất cả", "Đang học", "Hoàn thành"] as const;
 type Filter = typeof FILTERS[number];
@@ -53,7 +63,7 @@ function CourseItem({
   id,
   emoji,
   title,
-  subject,
+  description,
   totalLessons,
   completedLessons,
   color,
@@ -61,7 +71,7 @@ function CourseItem({
   difficulty,
   index,
 }: {
-  id: string; emoji: string; title: string; subject: string;
+  id: string; emoji: string; title: string; description: string;
   totalLessons: number; completedLessons: number;
   color: string; subtleColor: string; difficulty: string; index: number;
 }) {
@@ -93,7 +103,7 @@ function CourseItem({
               {isDone && <Text style={{ fontSize: 20 }}>✅</Text>}
             </View>
             <View className="flex-row items-center gap-2">
-              <Text className="text-sm text-text-muted">{subject}</Text>
+              <Text className="text-sm text-text-muted" numberOfLines={1}>{description || "—"}</Text>
               <Text className="text-text-muted">·</Text>
               <Text className="text-sm text-text-muted">{difficulty}</Text>
             </View>
@@ -117,15 +127,17 @@ function CourseItem({
 export default function CoursesScreen() {
   const [activeFilter, setActiveFilter] = useState<Filter>("Tất cả");
   const completedLessonIds = useProgressStore((s) => s.completedLessonIds);
+  const { courses, isLoading } = useCoursesStore((s) => ({ courses: s.courses, isLoading: s.isLoading }));
 
-  // Build courses list with real completion counts from store
-  const courses = Object.values(MOCK_COURSES).map((c) => ({
+  // Build display list with real completion counts from store
+  const displayCourses = courses.map((c) => ({
     ...c,
-    totalLessons: c.lessons.length,
-    completedLessons: c.lessons.filter((l) => completedLessonIds.includes(l.id)).length,
+    completedLessons: c.lessonIds.filter((id) => completedLessonIds.includes(id)).length,
+    color: COLOR_MAP[c.colorKey as keyof typeof COLOR_MAP]?.color || Colors.primary.DEFAULT,
+    subtleColor: COLOR_MAP[c.colorKey as keyof typeof COLOR_MAP]?.subtle || Colors.primary.subtle,
   }));
 
-  const filtered = courses.filter((c) => {
+  const filtered = displayCourses.filter((c) => {
     if (activeFilter === "Hoàn thành") return c.completedLessons === c.totalLessons;
     if (activeFilter === "Đang học") return c.completedLessons > 0 && c.completedLessons < c.totalLessons;
     return true;
@@ -146,7 +158,7 @@ export default function CoursesScreen() {
         >
           <Text className="text-4xl font-extrabold text-text">📚 Khóa học</Text>
           <Text className="text-base text-text-muted">
-            {MOCK_COURSES.length} khóa học của bạn
+            {isLoading ? "Đang tải..." : `${courses.length} khóa học của bạn`}
           </Text>
         </MotiView>
 
@@ -188,7 +200,11 @@ export default function CoursesScreen() {
 
         {/* ── Course list ──────────────────────────────────── */}
         <View className="px-5 gap-3">
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <View className="items-center py-12">
+              <ActivityIndicator size="large" color={Colors.primary.DEFAULT} />
+            </View>
+          ) : filtered.length === 0 ? (
             <View className="items-center py-12 gap-3">
               <Text style={{ fontSize: 48 }}>🔍</Text>
               <Text className="text-lg font-semibold text-text-muted text-center">
@@ -197,7 +213,19 @@ export default function CoursesScreen() {
             </View>
           ) : (
             filtered.map((course, i) => (
-              <CourseItem key={course.id} {...course} index={i} />
+              <CourseItem
+                key={course.id}
+                id={course.id}
+                emoji={course.emoji}
+                title={course.title}
+                description={course.description}
+                totalLessons={course.totalLessons}
+                completedLessons={course.completedLessons}
+                color={course.color}
+                subtleColor={course.subtleColor}
+                difficulty={course.difficulty}
+                index={i}
+              />
             ))
           )}
         </View>

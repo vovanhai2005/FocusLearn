@@ -7,13 +7,22 @@ import { MotiView } from "moti";
 import { LessonCard } from "@/components/features/LessonCard";
 import { Colors, Shadow } from "@/constants/theme";
 import { useProgressStore } from "@/store/useProgressStore";
-import { MOCK_COURSES } from "@/constants/mockData";
+import { useCoursesStore } from "@/store/useCoursesStore";
+
+const COLOR_MAP: Record<string, string> = {
+  primary: Colors.primary.DEFAULT,
+  success: Colors.success.DEFAULT,
+  secondary: Colors.secondary.DEFAULT,
+  warning: Colors.warning.DEFAULT,
+  info: Colors.info.DEFAULT,
+  error: Colors.error.DEFAULT,
+};
 
 export default function CourseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const completedLessonIds = useProgressStore((s) => s.completedLessonIds);
-
-  const course = id ? MOCK_COURSES[id] : undefined;
+  const course = useCoursesStore((s) => s.getCourseById(id || ""));
+  const lessons = useCoursesStore((s) => s.getLessonsByCourseId(id || ""));
 
   if (!course) {
     return (
@@ -27,10 +36,11 @@ export default function CourseDetailScreen() {
     );
   }
 
-  const completedCount = course.lessons.filter((l) =>
+  const completedCount = lessons.filter((l) =>
     completedLessonIds.includes(l.id)
   ).length;
-  const progress = course.lessons.length > 0 ? completedCount / course.lessons.length : 0;
+  const progress = lessons.length > 0 ? completedCount / lessons.length : 0;
+  const courseColor = course ? COLOR_MAP[course.colorKey as keyof typeof COLOR_MAP] : Colors.primary.DEFAULT;
 
   return (
     <SafeAreaView className="flex-1 bg-bg">
@@ -40,7 +50,7 @@ export default function CourseDetailScreen() {
       >
         {/* ── Hero header ──────────────────────────────────── */}
         <View
-          style={{ backgroundColor: course.color }}
+          style={{ backgroundColor: courseColor }}
           className="px-5 pt-4 pb-8 rounded-b-3xl"
         >
           {/* Back button */}
@@ -78,7 +88,7 @@ export default function CourseDetailScreen() {
             <View className="flex-row justify-between">
               <Text className="text-sm font-semibold text-white">Tiến độ</Text>
               <Text className="text-sm font-bold text-white">
-                {completedCount}/{course.lessons.length} bài
+                {completedCount}/{lessons.length} bài
               </Text>
             </View>
             <View className="h-3 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.3)" }}>
@@ -102,7 +112,7 @@ export default function CourseDetailScreen() {
         <View className="px-5 pt-6 gap-3">
           <Text className="text-2xl font-extrabold text-text">📋 Bài học</Text>
 
-          {course.lessons.map((lesson, i) => (
+          {lessons.map((lesson, i) => (
             <MotiView
               key={lesson.id}
               from={{ opacity: 0, translateY: 16 }}
@@ -111,10 +121,10 @@ export default function CourseDetailScreen() {
             >
               <LessonCard
                 title={lesson.title}
-                duration={lesson.duration}
+                duration={lesson.durationSeconds}
                 xpReward={lesson.xpReward}
                 emoji={lesson.emoji}
-                lessonType={lesson.lessonType}
+                lessonType={lesson.type}
                 isCompleted={completedLessonIds.includes(lesson.id)}
                 onPress={() =>
                   router.push(

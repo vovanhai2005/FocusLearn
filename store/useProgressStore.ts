@@ -303,24 +303,39 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
   },
 
   // ─────────────────────────────────────────────────────────
-  // syncProgressToSupabase — upsert current state
+  // syncProgressToSupabase — upsert current state to DB
   // ─────────────────────────────────────────────────────────
   syncProgressToSupabase: async (userId: string) => {
-    const state = get();
-    const insertPayload: ProgressInsert = {
-      user_id: userId,
-      xp: state.xp,
-      xp_today: state.xpToday,
-      xp_daily_goal: state.xpDailyGoal,
-      level: state.level,
-      streak: state.streak,
-      longest_streak: state.longestStreak,
-      last_active_date: state.lastActiveDate,
-    };
-    await (supabase.from("progress") as unknown as ProgressQueryBuilder).upsert(
-      insertPayload,
-      { onConflict: "user_id" }
-    );
+    if (!userId) {
+      console.warn("[syncProgress] User ID is missing, skipping sync");
+      return;
+    }
+
+    try {
+      const state = get();
+      const insertPayload: ProgressInsert = {
+        user_id: userId,
+        xp: state.xp,
+        xp_today: state.xpToday,
+        xp_daily_goal: state.xpDailyGoal,
+        level: state.level,
+        streak: state.streak,
+        longest_streak: state.longestStreak,
+        last_active_date: state.lastActiveDate,
+      };
+      const { error } = await (supabase.from("progress") as unknown as ProgressQueryBuilder).upsert(
+        insertPayload,
+        { onConflict: "user_id" }
+      );
+
+      if (error) {
+        console.error("[syncProgress] Upsert failed:", error.message);
+      } else {
+        console.log("[syncProgress] Progress synced for user", userId);
+      }
+    } catch (err) {
+      console.error("[syncProgress] Exception during sync:", err instanceof Error ? err.message : String(err));
+    }
   },
 
   // ─────────────────────────────────────────────────────────

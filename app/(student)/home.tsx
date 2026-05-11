@@ -5,6 +5,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -13,13 +14,14 @@ import { LessonCard } from "@/components/features/LessonCard";
 import { StreakBadge } from "@/components/features/StreakBadge";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useProgressStore, selectDailyProgress } from "@/store/useProgressStore";
+import { useCoursesStore } from "@/store/useCoursesStore";
 import { Colors, Shadow } from "@/constants/theme";
 
 // ─────────────────────────────────────────────────────────────
 // MOCK DATA
 // ─────────────────────────────────────────────────────────────
 
-// Real lesson IDs from course c1 and c2
+// Continue lessons — placeholder until enrollment system is built
 const CONTINUE_LESSONS = [
   {
     id: "c1l1",
@@ -39,13 +41,15 @@ const CONTINUE_LESSONS = [
   },
 ];
 
-// courseId map for subject cards
-const SUBJECT_CARDS = [
-  { emoji: "🔢", label: "Toán",       courseId: "c1", color: Colors.primary.subtle,   border: Colors.primary.DEFAULT },
-  { emoji: "🌿", label: "Khoa học",   courseId: "c2", color: Colors.success.subtle,   border: Colors.success.DEFAULT },
-  { emoji: "📖", label: "Tiếng Việt", courseId: "c3", color: Colors.warning.subtle,   border: Colors.warning.DEFAULT },
-  { emoji: "🎨", label: "Mỹ thuật",   courseId: "c4", color: Colors.secondary.subtle, border: Colors.secondary.DEFAULT },
-];
+// Color map for subject cards
+const COLOR_MAP: Record<string, { color: string; border: string }> = {
+  primary: { color: Colors.primary.subtle, border: Colors.primary.DEFAULT },
+  success: { color: Colors.success.subtle, border: Colors.success.DEFAULT },
+  secondary: { color: Colors.secondary.subtle, border: Colors.secondary.DEFAULT },
+  warning: { color: Colors.warning.subtle, border: Colors.warning.DEFAULT },
+  info: { color: Colors.info.subtle, border: Colors.info.DEFAULT },
+  error: { color: Colors.error.subtle, border: Colors.error.DEFAULT },
+};
 
 // ─────────────────────────────────────────────────────────────
 // XP BAR COMPONENT
@@ -86,6 +90,7 @@ export default function HomeScreen() {
   const level = useProgressStore((s) => s.level);
   const dailyProgress = useProgressStore(selectDailyProgress);
   const completedLessonIds = useProgressStore((s) => s.completedLessonIds);
+  const { courses, isLoading } = useCoursesStore((s) => ({ courses: s.courses, isLoading: s.isLoading }));
 
   const firstName = user?.name?.split(" ").at(-1) ?? "bạn";
 
@@ -182,27 +187,36 @@ export default function HomeScreen() {
               🎯 Môn học
             </Text>
 
-            <View className="flex-row flex-wrap gap-3">
-              {SUBJECT_CARDS.map(({ emoji, label, courseId, color, border }, i) => (
-                <MotiView
-                  key={label}
-                  from={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 350 + i * 60, type: "spring", damping: 18 }}
-                  style={{ width: "47%" }}
-                >
-                  <TouchableOpacity
-                    activeOpacity={0.82}
-                    onPress={() => router.push(`/(student)/course/${courseId}` as `/(student)/course/${string}`)}
-                    style={{ backgroundColor: color, borderColor: border, borderWidth: 2, ...Shadow.sm }}
-                    className="rounded-2xl p-5 items-center gap-2 min-h-[100px] justify-center"
-                  >
-                    <Text style={{ fontSize: 36 }}>{emoji}</Text>
-                    <Text className="text-lg font-bold text-text text-center">{label}</Text>
-                  </TouchableOpacity>
-                </MotiView>
-              ))}
-            </View>
+            {isLoading ? (
+              <View className="items-center py-6">
+                <ActivityIndicator size="large" color={Colors.primary.DEFAULT} />
+              </View>
+            ) : (
+              <View className="flex-row flex-wrap gap-3">
+                {courses.slice(0, 4).map((course, i) => {
+                  const colorConfig = COLOR_MAP[course.colorKey as keyof typeof COLOR_MAP] || { color: Colors.primary.subtle, border: Colors.primary.DEFAULT };
+                  return (
+                    <MotiView
+                      key={course.id}
+                      from={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 350 + i * 60, type: "spring", damping: 18 }}
+                      style={{ width: "47%" }}
+                    >
+                      <TouchableOpacity
+                        activeOpacity={0.82}
+                        onPress={() => router.push(`/(student)/course/${course.id}` as `/(student)/course/${string}`)}
+                        style={{ backgroundColor: colorConfig.color, borderColor: colorConfig.border, borderWidth: 2, ...Shadow.sm }}
+                        className="rounded-2xl p-5 items-center gap-2 min-h-[100px] justify-center"
+                      >
+                        <Text style={{ fontSize: 36 }}>{course.emoji}</Text>
+                        <Text className="text-lg font-bold text-text text-center" numberOfLines={1}>{course.title}</Text>
+                      </TouchableOpacity>
+                    </MotiView>
+                  );
+                })}
+              </View>
+            )}
           </View>
 
           {/* ── BADGE HINT ──────────────────────────────────── */}
