@@ -32,7 +32,7 @@ export const Colors = {
   success: {
     DEFAULT: "#3DD68C",
     light: "#78E8B2",
-    dark: "#22A865",
+    dark: "#187A4A",
     subtle: "#E6FBF2",
   },
 
@@ -40,7 +40,7 @@ export const Colors = {
   warning: {
     DEFAULT: "#FFD166",
     light: "#FFE29D",
-    dark: "#D4A017",
+    dark: "#8B6914",
     subtle: "#FFFBEB",
   },
 
@@ -48,7 +48,7 @@ export const Colors = {
   info: {
     DEFAULT: "#56CFE1",
     light: "#90E3EF",
-    dark: "#2AAFC3",
+    dark: "#1A7A8A",
     subtle: "#E8FAFD",
   },
 
@@ -70,8 +70,8 @@ export const Colors = {
   // Text
   text: {
     DEFAULT: "#2D2B55",  // Deep indigo – primary text
-    muted: "#7A7899",    // Secondary / caption
-    light: "#B5B3D0",    // Placeholder / disabled
+    muted: "#5E5C7F",    // Secondary / caption – darkened for ADHD readability
+    light: "#9896B4",    // Placeholder / disabled – darkened for contrast
     inverse: "#FFFFFF",
   },
 

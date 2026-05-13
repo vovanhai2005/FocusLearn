@@ -2,6 +2,7 @@
 import React from "react";
 import { Text, View } from "react-native";
 import { MotiView } from "moti";
+import { useSettingsStore } from "@/store/useSettingsStore";
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -64,33 +65,42 @@ export function Badge({
   emoji,
   pulse = false,
 }: BadgeProps) {
+  const reduceMotion = useSettingsStore((s) => s.reduceMotion);
+
+  // When reduceMotion is on or no pulse requested, render without animation wrapper
+  const shouldAnimate = pulse && !reduceMotion;
+
+  const content = (
+    <View
+      className={[
+        "flex-row items-center gap-1 self-start",
+        containerVariant[variant],
+        containerSize[size],
+      ].join(" ")}
+    >
+      {emoji ? (
+        <Text className={textSize[size]}>{emoji}</Text>
+      ) : null}
+      <Text
+        className={`${textVariant[variant]} ${textSize[size]} font-bold`}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+
+  if (!shouldAnimate) {
+    return content;
+  }
+
   return (
     <MotiView
-      from={pulse ? { scale: 1 } : undefined}
-      animate={pulse ? { scale: 1.06 } : { scale: 1 }}
-      transition={
-        pulse
-          ? { loop: true, type: "timing", duration: 600 }
-          : { type: "spring", damping: 20 }
-      }
+      from={{ scale: 1 }}
+      animate={{ scale: 1.06 }}
+      transition={{ loop: true, type: "timing", duration: 1200 }}
     >
-      <View
-        className={[
-          "flex-row items-center gap-1 self-start",
-          containerVariant[variant],
-          containerSize[size],
-        ].join(" ")}
-      >
-        {emoji ? (
-          <Text className={textSize[size]}>{emoji}</Text>
-        ) : null}
-        <Text
-          className={`${textVariant[variant]} ${textSize[size]} font-bold`}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
-      </View>
+      {content}
     </MotiView>
   );
 }

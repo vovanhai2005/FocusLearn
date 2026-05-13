@@ -60,6 +60,7 @@ interface CoursesState {
   hydrateCourses: () => Promise<void>;
   getCourseById: (courseId: string) => Course | undefined;
   getLessonsByCourseId: (courseId: string) => Lesson[];
+  getLessonById: (lessonId: string) => Lesson | undefined;
   reset: () => void;
 }
 
@@ -121,6 +122,10 @@ export const useCoursesStore = create<CoursesState>((set, get) => ({
 
   getLessonsByCourseId: (courseId: string) => {
     return get().lessons.filter((l) => l.courseId === courseId);
+  },
+
+  getLessonById: (lessonId: string) => {
+    return get().lessons.find((l) => l.id === lessonId);
   },
 
   reset: () => {

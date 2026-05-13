@@ -8,6 +8,7 @@ import { useAuthStore, subscribeToAuthChanges } from "@/store/useAuthStore";
 import { useProgressStore } from "@/store/useProgressStore";
 import { useCoursesStore } from "@/store/useCoursesStore";
 import { useTeacherStore } from "@/store/useTeacherStore";
+import { useSettingsStore } from "@/store/useSettingsStore";
 
 export default function RootLayout() {
   const hydrate = useAuthStore((s) => s.hydrate);
@@ -20,12 +21,16 @@ export default function RootLayout() {
   const resetCourses = useCoursesStore((s) => s.reset);
   const hydrateTeacherData = useTeacherStore((s) => s.hydrateTeacherData);
   const resetTeacherData = useTeacherStore((s) => s.reset);
+  const hydrateSettings = useSettingsStore((s) => s.hydrateSettings);
 
   useEffect(() => {
     // 1. Restore auth session from AsyncStorage
     hydrate();
 
-    // 2. Listen for Supabase auth state changes (e.g. sign-out from another device)
+    // 2. Hydrate settings (check OS reduce-motion preference)
+    hydrateSettings();
+
+    // 3. Listen for Supabase auth state changes (e.g. sign-out from another device)
     const unsubscribe = subscribeToAuthChanges();
     return unsubscribe;
   }, []);

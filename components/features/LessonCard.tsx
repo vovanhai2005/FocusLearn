@@ -29,6 +29,13 @@ function formatDuration(seconds: number): string {
   return s === 0 ? `${m} phút` : `${m}:${String(s).padStart(2, "0")}`;
 }
 
+const typeLabel: Record<string, string> = {
+  video:       "Video",
+  quiz:        "Quiz",
+  reading:     "Đọc",
+  interactive: "Tương tác",
+};
+
 const typeEmoji: Record<string, string> = {
   video:       "🎬",
   quiz:        "✏️",
@@ -58,13 +65,14 @@ export function LessonCard({
       <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.82}
-        disabled={isCompleted}
+        /* Completed lessons are NOT disabled — children can review */
+        disabled={false}
         accessibilityRole="button"
-        accessibilityLabel={`${title}, ${formatDuration(duration)}, ${xpReward} XP${isCompleted ? ", đã hoàn thành" : ""}`}
+        accessibilityLabel={`${title}, ${typeLabel[lessonType] ?? "Bài học"}, ${formatDuration(duration)}, ${xpReward} XP${isCompleted ? ", đã hoàn thành — nhấn để ôn lại" : ""}`}
       >
         <MotiView
           animate={{
-            opacity: isCompleted ? 0.72 : 1,
+            opacity: isCompleted ? 0.88 : 1,
             backgroundColor: isCompleted
               ? Colors.success.subtle
               : Colors.bg.card,
@@ -102,23 +110,25 @@ export function LessonCard({
                 ⏱️ {formatDuration(duration)}
               </Text>
 
-              {/* Lesson type */}
+              {/* Lesson type — always has text label, not emoji-only */}
               <Text className="text-sm text-text-muted">
-                {typeEmoji[lessonType] ?? "📄"} {lessonType}
+                {typeEmoji[lessonType] ?? "📄"} {typeLabel[lessonType] ?? lessonType}
               </Text>
             </View>
           </View>
 
-          {/* ── Right: XP badge / Done ────────────────────── */}
+          {/* ── Right: XP badge / Review label ────────────── */}
           <View className="items-end gap-2">
             {isCompleted ? (
-              <MotiView
-                from={{ scale: 0.6, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", damping: 12 }}
-              >
-                <Text style={{ fontSize: 28 }}>✅</Text>
-              </MotiView>
+              <View className="items-center gap-1">
+                <Text style={{ fontSize: 22 }}>✅</Text>
+                <Text
+                  className="text-xs font-bold text-text-muted"
+                  accessibilityLabel="Ôn lại bài học"
+                >
+                  Ôn lại
+                </Text>
+              </View>
             ) : (
               <Badge
                 label={`+${xpReward} XP`}

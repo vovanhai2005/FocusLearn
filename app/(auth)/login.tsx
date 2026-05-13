@@ -118,13 +118,24 @@ export default function LoginScreen() {
                 leftEmoji="🔑"
                 placeholder="Nhập mã số 6 chữ số..."
                 value={code}
-                onChangeText={(t) => { setCode(t); clearError(); }}
+                onChangeText={(t) => { setCode(t.replace(/\D/g, "")); clearError(); }}
                 keyboardType="number-pad"
                 maxLength={6}
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
                 error={error ?? undefined}
               />
+
+              {/* Retry button when error is visible */}
+              {error ? (
+                <TouchableOpacity
+                  onPress={handleLogin}
+                  className="flex-row items-center gap-2 self-center min-h-[44px] px-4 mt-1"
+                  accessibilityLabel="Thử lại đăng nhập"
+                >
+                  <Text className="text-base font-semibold text-primary">🔄 Thử lại</Text>
+                </TouchableOpacity>
+              ) : null}
             </MotiView>
 
             {/* ── Hint ─────────────────────────────────────── */}

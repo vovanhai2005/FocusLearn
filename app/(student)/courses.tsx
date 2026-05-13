@@ -13,7 +13,6 @@ import { MotiView } from "moti";
 import { Colors, Shadow } from "@/constants/theme";
 import { useProgressStore } from "@/store/useProgressStore";
 import { useCoursesStore } from "@/store/useCoursesStore";
-import { MOCK_COURSES } from "@/constants/mockData";
 
 // ─────────────────────────────────────────────────────────────
 // HELPERS
@@ -99,7 +98,7 @@ function CourseItem({
           </View>
           <View className="flex-1 gap-2">
             <View className="flex-row items-start justify-between gap-2">
-              <Text className="text-lg font-bold text-text flex-1" numberOfLines={1}>{title}</Text>
+              <Text className="text-lg font-bold text-text flex-1" numberOfLines={2}>{title}</Text>
               {isDone && <Text style={{ fontSize: 20 }}>✅</Text>}
             </View>
             <View className="flex-row items-center gap-2">
@@ -127,7 +126,7 @@ function CourseItem({
 export default function CoursesScreen() {
   const [activeFilter, setActiveFilter] = useState<Filter>("Tất cả");
   const completedLessonIds = useProgressStore((s) => s.completedLessonIds);
-  const { courses, isLoading } = useCoursesStore((s) => ({ courses: s.courses, isLoading: s.isLoading }));
+  const { courses, isLoading, error, hydrateCourses } = useCoursesStore((s) => ({ courses: s.courses, isLoading: s.isLoading, error: s.error, hydrateCourses: s.hydrateCourses }));
 
   // Build display list with real completion counts from store
   const displayCourses = courses.map((c) => ({
@@ -200,16 +199,42 @@ export default function CoursesScreen() {
 
         {/* ── Course list ──────────────────────────────────── */}
         <View className="px-5 gap-3">
-          {isLoading ? (
+          {error ? (
+            <View style={[Shadow.sm, { backgroundColor: Colors.error.subtle, borderColor: Colors.error.DEFAULT }]} className="rounded-2xl border-2 p-5 gap-3">
+              <View className="flex-row items-start gap-3">
+                <Text style={{ fontSize: 24 }}>⚠️</Text>
+                <View className="flex-1">
+                  <Text className="text-base font-semibold" style={{ color: Colors.error.dark }}>
+                    Chưa kết nối được. Kiểm tra mạng và thử lại nhé!
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => hydrateCourses()}
+                className="bg-primary rounded-lg py-3 px-5 self-start min-h-[48px] justify-center"
+              >
+                <Text className="text-white font-bold text-base">🔄 Thử lại</Text>
+              </TouchableOpacity>
+            </View>
+          ) : isLoading ? (
             <View className="items-center py-12">
               <ActivityIndicator size="large" color={Colors.primary.DEFAULT} />
             </View>
           ) : filtered.length === 0 ? (
-            <View className="items-center py-12 gap-3">
-              <Text style={{ fontSize: 48 }}>🔍</Text>
-              <Text className="text-lg font-semibold text-text-muted text-center">
-                Chưa có khóa học nào ở đây
+            <View className="items-center py-12 gap-4">
+              <Text style={{ fontSize: 48 }}>📚</Text>
+              <Text className="text-xl font-bold text-text text-center">
+                Chưa có khóa học nào
               </Text>
+              <Text className="text-base text-text-muted text-center leading-6">
+                Hỏi giáo viên để nhận mã lớp nhé!
+              </Text>
+              <TouchableOpacity
+                onPress={() => hydrateCourses()}
+                className="bg-primary rounded-xl py-3 px-6 min-h-[48px] justify-center mt-2"
+              >
+                <Text className="text-white font-bold text-base">🔄 Tải lại</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             filtered.map((course, i) => (

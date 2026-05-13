@@ -118,9 +118,11 @@ export default function DashboardScreen() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const isAuthLoading = useAuthStore((s) => s.isLoading);
-  const { stats, isLoading: isTeacherLoading } = useTeacherStore((s) => ({
+  const { stats, isLoading: isTeacherLoading, error, hydrateTeacherData } = useTeacherStore((s) => ({
     stats: s.stats,
     isLoading: s.isLoading,
+    error: s.error,
+    hydrateTeacherData: s.hydrateTeacherData,
   }));
 
   const firstName = user?.name?.split(" ").at(-1) ?? "giáo viên";
@@ -179,7 +181,24 @@ export default function DashboardScreen() {
           </View>
         </MotiView>
 
-        {isTeacherLoading ? (
+        {error ? (
+          <View className="px-5 pt-6">
+            <View style={[Shadow.sm, { backgroundColor: Colors.error.subtle, borderColor: Colors.error.DEFAULT }]} className="rounded-2xl border-2 p-4 gap-3">
+              <View className="flex-row items-start gap-3">
+                <Text style={{ fontSize: 24 }}>⚠️</Text>
+                <View className="flex-1">
+                  <Text className="text-base font-semibold text-error">{error}</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => hydrateTeacherData(user?.id || "")}
+                className="bg-error rounded-lg py-2 px-4 self-start"
+              >
+                <Text className="text-white font-semibold text-sm">Thử lại</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : isTeacherLoading ? (
           <View className="flex-1 items-center justify-center py-12">
             <ActivityIndicator size="large" color={Colors.primary.DEFAULT} />
           </View>

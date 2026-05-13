@@ -1,10 +1,11 @@
 // filepath: app/(student)/profile.tsx
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
+  Switch,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { StreakBadge } from "@/components/features/StreakBadge";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useProgressStore } from "@/store/useProgressStore";
+import { useSettingsStore } from "@/store/useSettingsStore";
 import { Colors, Shadow } from "@/constants/theme";
 
 // ─────────────────────────────────────────────────────────────
@@ -54,6 +56,7 @@ function StatCard({
 // ─────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
+  const [logoutError, setLogoutError] = useState<string | null>(null);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const isLoading = useAuthStore((s) => s.isLoading);
@@ -65,6 +68,9 @@ export default function ProfileScreen() {
   const completedLessons = useProgressStore((s) => s.completedLessonIds.length);
   const badges = useProgressStore((s) => s.badges.filter((b) => b.isUnlocked));
 
+  const reduceMotion = useSettingsStore((s) => s.reduceMotion);
+  const setReduceMotion = useSettingsStore((s) => s.setReduceMotion);
+
   function handleLogout() {
     Alert.alert(
       "Đăng xuất",
@@ -75,19 +81,32 @@ export default function ProfileScreen() {
           text: "Đăng xuất",
           style: "destructive",
           onPress: async () => {
-            await logout();
-            router.replace("/(auth)/onboarding");
+            try {
+              await logout();
+              router.replace("/(auth)/onboarding");
+            } catch (error) {
+              setLogoutError("Không thể đăng xuất. Vui lòng thử lại");
+              Alert.alert(
+                "Lỗi",
+                "Không thể đăng xuất. Vui lòng thử lại",
+                [
+                  { text: "Đóng", style: "cancel" },
+                  { text: "Thử lại", onPress: handleLogout },
+                ]
+              );
+            }
           },
         },
       ]
     );
   }
 
+  // Softer, less pressure-inducing labels
   const stats = [
-    { emoji: "⭐", label: "Tổng XP",     value: xp,             color: Colors.warning.DEFAULT },
-    { emoji: "🔥", label: "Streak hiện tại", value: streak,      color: Colors.secondary.DEFAULT },
-    { emoji: "🏆", label: "Streak dài nhất", value: longestStreak, color: Colors.error.DEFAULT },
-    { emoji: "✅", label: "Bài đã xong",  value: completedLessons, color: Colors.success.DEFAULT },
+    { emoji: "⭐", label: "Tổng XP",         value: xp,               color: Colors.warning.DEFAULT },
+    { emoji: "📅", label: "Ngày học liên tiếp", value: streak,         color: Colors.secondary.DEFAULT },
+    { emoji: "🏆", label: "Kỷ lục của bạn",    value: longestStreak,   color: Colors.secondary.dark },
+    { emoji: "✅", label: "Bài đã xong",       value: completedLessons, color: Colors.success.DEFAULT },
   ];
 
   return (
@@ -184,6 +203,36 @@ export default function ProfileScreen() {
                 ))}
               </View>
             )}
+          </View>
+
+          {/* ── Settings ─────────────────────────────────── */}
+          <View className="gap-3">
+            <Text className="text-2xl font-extrabold text-text">⚙️ Cài đặt</Text>
+
+            {/* Reduce Motion toggle */}
+            <View
+              style={[Shadow.sm, { backgroundColor: Colors.bg.card }]}
+              className="rounded-2xl p-4 flex-row items-center gap-4 border border-border"
+            >
+              <View className="flex-1 gap-1">
+                <Text className="text-base font-bold text-text">
+                  Giảm hiệu ứng
+                </Text>
+                <Text className="text-sm text-text-muted">
+                  Tắt hoạt ảnh để dễ tập trung hơn
+                </Text>
+              </View>
+              <Switch
+                value={reduceMotion}
+                onValueChange={setReduceMotion}
+                trackColor={{
+                  false: Colors.border.DEFAULT,
+                  true: Colors.primary.light,
+                }}
+                thumbColor={reduceMotion ? Colors.primary.DEFAULT : Colors.bg.card}
+                accessibilityLabel="Giảm hiệu ứng chuyển động"
+              />
+            </View>
           </View>
 
           {/* ── Logout button ─────────────────────────────── */}

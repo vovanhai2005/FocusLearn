@@ -90,7 +90,12 @@ export default function HomeScreen() {
   const level = useProgressStore((s) => s.level);
   const dailyProgress = useProgressStore(selectDailyProgress);
   const completedLessonIds = useProgressStore((s) => s.completedLessonIds);
-  const { courses, isLoading } = useCoursesStore((s) => ({ courses: s.courses, isLoading: s.isLoading }));
+  const { courses, isLoading, error, hydrateCourses } = useCoursesStore((s) => ({
+    courses: s.courses,
+    isLoading: s.isLoading,
+    error: s.error,
+    hydrateCourses: s.hydrateCourses,
+  }));
 
   const firstName = user?.name?.split(" ").at(-1) ?? "bạn";
 
@@ -187,7 +192,24 @@ export default function HomeScreen() {
               🎯 Môn học
             </Text>
 
-            {isLoading ? (
+            {error ? (
+              <View style={[Shadow.sm, { backgroundColor: Colors.error.subtle, borderColor: Colors.error.DEFAULT }]} className="rounded-2xl border-2 p-5 gap-3">
+                <View className="flex-row items-start gap-3">
+                  <Text style={{ fontSize: 24 }}>⚠️</Text>
+                  <View className="flex-1">
+                    <Text className="text-base font-semibold" style={{ color: Colors.error.dark }}>
+                      Chưa tải được môn học. Kiểm tra mạng và thử lại nhé!
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => hydrateCourses()}
+                  className="bg-primary rounded-lg py-3 px-5 self-start min-h-[48px] justify-center"
+                >
+                  <Text className="text-white font-bold text-base">🔄 Thử lại</Text>
+                </TouchableOpacity>
+              </View>
+            ) : isLoading ? (
               <View className="items-center py-6">
                 <ActivityIndicator size="large" color={Colors.primary.DEFAULT} />
               </View>
@@ -210,7 +232,7 @@ export default function HomeScreen() {
                         className="rounded-2xl p-5 items-center gap-2 min-h-[100px] justify-center"
                       >
                         <Text style={{ fontSize: 36 }}>{course.emoji}</Text>
-                        <Text className="text-lg font-bold text-text text-center" numberOfLines={1}>{course.title}</Text>
+                        <Text className="text-lg font-bold text-text text-center" numberOfLines={2}>{course.title}</Text>
                       </TouchableOpacity>
                     </MotiView>
                   );
@@ -233,10 +255,10 @@ export default function HomeScreen() {
             <Text style={{ fontSize: 36 }}>🏆</Text>
             <View className="flex-1">
               <Text className="text-base font-bold text-text">
-                Hoàn thành 1 bài hôm nay!
+                Thử 1 bài ngắn hôm nay nhé!
               </Text>
               <Text className="text-sm text-text-muted mt-0.5">
-                Nhận huy hiệu "Học sinh mới" ⭐
+                Một chút mỗi ngày cũng là tiến bộ ⭐
               </Text>
             </View>
           </MotiView>

@@ -62,19 +62,25 @@ function CustomTabBar({
           >
             <MotiView
               animate={{
-                scale: isFocused ? 1.12 : 1,
+                scale: isFocused ? 1.08 : 1,
                 backgroundColor: isFocused
                   ? Colors.primary.subtle
                   : "transparent",
               }}
               transition={{ type: "spring", damping: 18, stiffness: 300 }}
-              className="items-center px-3 py-1.5 rounded-xl gap-0.5"
+              style={[
+                isFocused && {
+                  borderWidth: 1.5,
+                  borderColor: Colors.primary.light,
+                },
+              ]}
+              className="items-center px-4 py-2 rounded-2xl gap-1"
             >
               <Text style={{ fontSize: isFocused ? 24 : 22 }}>{tab.emoji}</Text>
               <Text
                 style={{
-                  color: isFocused ? Colors.primary.DEFAULT : Colors.text.muted,
-                  fontSize: 11,
+                  color: isFocused ? Colors.primary.dark : Colors.text.muted,
+                  fontSize: 13,
                   fontWeight: isFocused ? "700" : "500",
                 }}
               >

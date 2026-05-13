@@ -40,7 +40,7 @@ interface ProgressState {
   incrementStreak: () => void;
   resetStreakIfNeeded: () => void;
   markLessonComplete: (lessonId: string, xpReward: number) => void;
-  updateCourseProgress: (courseId: string, totalLessons: number) => void;
+  updateCourseProgress: (courseId: string, courseLessonIds: string[]) => void;
   unlockBadge: (badgeId: string) => void;
   hydrateProgress: (userId: string) => Promise<void>;
   syncProgressToSupabase: (userId: string) => Promise<void>;
@@ -214,15 +214,15 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
   // ─────────────────────────────────────────────────────────
   // updateCourseProgress
   // ─────────────────────────────────────────────────────────
-  updateCourseProgress: (courseId: string, totalLessons: number) => {
+  updateCourseProgress: (courseId: string, courseLessonIds: string[]) => {
     const state = get();
 
-    const completedInCourse = state.completedLessonIds.filter((id) =>
-      // NOTE: in a real app, filter by actual course membership
-      // For MVP we count all completed lessons
-      Boolean(id)
+    // Filter completed lessons to only those in this course
+    const completedInCourse = courseLessonIds.filter((id) =>
+      state.completedLessonIds.includes(id)
     ).length;
 
+    const totalLessons = courseLessonIds.length;
     const percentComplete =
       totalLessons > 0
         ? Math.min(100, Math.round((completedInCourse / totalLessons) * 100))

@@ -146,8 +146,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       return true;
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Đã xảy ra lỗi. Thử lại nhé!";
+      // Child-friendly error messages — never show raw technical errors
+      let message = "Có lỗi xảy ra. Thử lại nhé!";
+      if (err instanceof Error) {
+        const raw = err.message.toLowerCase();
+        if (
+          raw.includes("network") ||
+          raw.includes("fetch") ||
+          raw.includes("timeout") ||
+          raw.includes("abort") ||
+          raw.includes("socket") ||
+          raw.includes("econnrefused")
+        ) {
+          message = "Chưa kết nối được. Thử lại hoặc nhờ giáo viên giúp nhé!";
+        }
+      }
       set({ error: message, isLoading: false });
       return false;
     }

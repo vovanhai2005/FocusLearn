@@ -1,6 +1,6 @@
 // filepath: app/(auth)/onboarding.tsx
 import React, { useState } from "react";
-import { View, Text, ScrollView } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { MotiView } from "moti";
@@ -10,40 +10,22 @@ import { useAuthStore } from "@/store/useAuthStore";
 import type { Role } from "@/types";
 
 // ─────────────────────────────────────────────────────────────
-// ROLE DATA
-// ─────────────────────────────────────────────────────────────
-
-const ROLES: {
-  role: Role;
-  icon: string;
-  label: string;
-  description: string;
-}[] = [
-  {
-    role: "student",
-    icon: "🎒",
-    label: "Học sinh",
-    description: "Xem bài học\n& làm quiz",
-  },
-  {
-    role: "teacher",
-    icon: "👩‍🏫",
-    label: "Giáo viên",
-    description: "Tạo khóa học\n& theo dõi lớp",
-  },
-];
-
-// ─────────────────────────────────────────────────────────────
-// SCREEN
+// SCREEN — Student-first onboarding
 // ─────────────────────────────────────────────────────────────
 
 export default function OnboardingScreen() {
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  // Default to student — the primary user of this app
+  const [selectedRole, setSelectedRole] = useState<Role>("student");
   const setRole = useAuthStore((s) => s.setRole);
 
   function handleContinue() {
     if (!selectedRole) return;
     setRole(selectedRole);
+    router.push("/(auth)/login");
+  }
+
+  function handleTeacherLogin() {
+    setRole("teacher");
     router.push("/(auth)/login");
   }
 
@@ -81,45 +63,34 @@ export default function OnboardingScreen() {
             <View className="w-16 h-1 rounded-full bg-border" />
           </MotiView>
 
-          {/* ── Question heading ─────────────────────────────── */}
+          {/* ── Student-first hero card ─────────────────────── */}
           <MotiView
             from={{ opacity: 0, translateY: 12 }}
             animate={{ opacity: 1, translateY: 0 }}
             transition={{ delay: 250, type: "spring", damping: 22 }}
+            className="items-center gap-5"
           >
-            <Text className="text-3xl font-extrabold text-text text-center">
-              Bạn là ai? 🤔
+            <Text className="text-2xl font-extrabold text-text text-center">
+              Chào mừng bạn! 👋
             </Text>
-            <Text className="text-base text-text-muted text-center mt-2">
-              Chọn vai trò của bạn để bắt đầu
-            </Text>
-          </MotiView>
 
-          {/* ── Role cards — stagger animation ──────────────── */}
-          <View className="flex-row justify-center gap-5">
-            {ROLES.map(({ role, icon, label, description }, i) => (
-              <MotiView
-                key={role}
-                from={{ opacity: 0, translateY: 24 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                transition={{
-                  delay: 350 + i * 100,
-                  type: "spring",
-                  damping: 20,
-                  stiffness: 220,
-                }}
-              >
-                <RoleCard
-                  role={role}
-                  icon={icon}
-                  label={label}
-                  description={description}
-                  selected={selectedRole === role}
-                  onPress={() => setSelectedRole(role)}
-                />
-              </MotiView>
-            ))}
-          </View>
+            {/* Primary student card — large and prominent */}
+            <MotiView
+              from={{ opacity: 0, translateY: 16 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ delay: 350, type: "spring", damping: 20 }}
+              style={{ width: "100%" }}
+            >
+              <RoleCard
+                role="student"
+                icon="🎒"
+                label="Học sinh"
+                description="Xem bài học & làm quiz"
+                selected={selectedRole === "student"}
+                onPress={() => setSelectedRole("student")}
+              />
+            </MotiView>
+          </MotiView>
 
           {/* ── Spacer ──────────────────────────────────────── */}
           <View className="flex-1" />
@@ -128,23 +99,28 @@ export default function OnboardingScreen() {
           <MotiView
             from={{ opacity: 0, translateY: 16 }}
             animate={{ opacity: 1, translateY: 0 }}
-            transition={{ delay: 550, type: "spring", damping: 22 }}
+            transition={{ delay: 450, type: "spring", damping: 22 }}
+            className="gap-4"
           >
             <Button
-              label="Tiếp tục"
+              label="Bắt đầu học"
               rightEmoji="→"
               variant="primary"
               size="lg"
               fullWidth
-              disabled={!selectedRole}
               onPress={handleContinue}
             />
 
-            {!selectedRole && (
-              <Text className="text-sm text-text-muted text-center mt-3">
-                Chọn một vai trò để tiếp tục
+            {/* Teacher link — secondary, smaller */}
+            <TouchableOpacity
+              onPress={handleTeacherLogin}
+              className="items-center min-h-[44px] justify-center"
+              accessibilityLabel="Đăng nhập với vai trò giáo viên"
+            >
+              <Text className="text-base text-text-muted">
+                Bạn là giáo viên? <Text className="text-primary font-semibold">Nhấn vào đây</Text>
               </Text>
-            )}
+            </TouchableOpacity>
           </MotiView>
         </View>
       </ScrollView>

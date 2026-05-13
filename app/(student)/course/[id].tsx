@@ -1,6 +1,6 @@
 // filepath: app/(student)/course/[id].tsx
-import React from "react";
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { MotiView } from "moti";
@@ -20,9 +20,21 @@ const COLOR_MAP: Record<string, string> = {
 
 export default function CourseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const [showLoading, setShowLoading] = useState(false);
   const completedLessonIds = useProgressStore((s) => s.completedLessonIds);
+  const { isLoading } = useCoursesStore((s) => ({ isLoading: s.isLoading }));
   const course = useCoursesStore((s) => s.getCourseById(id || ""));
   const lessons = useCoursesStore((s) => s.getLessonsByCourseId(id || ""));
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>;
+    if (isLoading) {
+      timeout = setTimeout(() => setShowLoading(true), 500);
+    } else {
+      setShowLoading(false);
+    }
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
 
   if (!course) {
     return (
@@ -112,28 +124,39 @@ export default function CourseDetailScreen() {
         <View className="px-5 pt-6 gap-3">
           <Text className="text-2xl font-extrabold text-text">📋 Bài học</Text>
 
-          {lessons.map((lesson, i) => (
-            <MotiView
-              key={lesson.id}
-              from={{ opacity: 0, translateY: 16 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ delay: 200 + i * 70, type: "spring", damping: 20 }}
-            >
-              <LessonCard
-                title={lesson.title}
-                duration={lesson.durationSeconds}
-                xpReward={lesson.xpReward}
-                emoji={lesson.emoji}
-                lessonType={lesson.type}
-                isCompleted={completedLessonIds.includes(lesson.id)}
-                onPress={() =>
-                  router.push(
-                    `/(student)/lesson/${lesson.id}` as `/(student)/lesson/${string}`
-                  )
-                }
-              />
-            </MotiView>
-          ))}
+          {showLoading ? (
+            <View className="items-center py-12">
+              <ActivityIndicator size="large" color={Colors.primary.DEFAULT} />
+            </View>
+          ) : lessons.length === 0 ? (
+            <View className="items-center py-12 gap-3">
+              <Text style={{ fontSize: 48 }}>📚</Text>
+              <Text className="text-lg font-semibold text-text-muted">Chưa có bài học nào</Text>
+            </View>
+          ) : (
+            lessons.map((lesson, i) => (
+              <MotiView
+                key={lesson.id}
+                from={{ opacity: 0, translateY: 16 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                transition={{ delay: 200 + i * 70, type: "spring", damping: 20 }}
+              >
+                <LessonCard
+                  title={`Bài ${i + 1}: ${lesson.title}`}
+                  duration={lesson.durationSeconds}
+                  xpReward={lesson.xpReward}
+                  emoji={lesson.emoji}
+                  lessonType={lesson.type}
+                  isCompleted={completedLessonIds.includes(lesson.id)}
+                  onPress={() =>
+                    router.push(
+                      `/(student)/lesson/${lesson.id}` as `/(student)/lesson/${string}`
+                    )
+                  }
+                />
+              </MotiView>
+            ))
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
