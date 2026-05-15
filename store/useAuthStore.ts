@@ -1,7 +1,7 @@
 // filepath: store/useAuthStore.ts
 import { create } from "zustand";
 import type { User, Role } from "@/types";
-import { supabase, type Database } from "@/lib/supabase";
+import { isSupabaseConfigured, supabase, type Database } from "@/lib/supabase";
 import { AvatarEmojis } from "@/constants/theme";
 import { useProgressStore } from "@/store/useProgressStore";
 
@@ -92,6 +92,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
+      if (!isSupabaseConfigured) {
+        set({
+          error: "Supabase chua duoc cau hinh. Cap nhat file .env de dang nhap.",
+          isLoading: false,
+        });
+        return false;
+      }
+
       const selectedRole = get().role;
 
       // Query users table for matching access code
@@ -181,7 +189,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     }
 
-    await supabase.auth.signOut();
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut();
+    }
     set({
       user: null,
       role: null,
@@ -199,6 +209,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
 
     try {
+      if (!isSupabaseConfigured) {
+        set({ isLoading: false, isAuthenticated: false });
+        return;
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -254,6 +269,10 @@ export const selectAuthError = (s: AuthState) => s.error;
  * Returns the unsubscribe function.
  */
 export function subscribeToAuthChanges(): () => void {
+  if (!isSupabaseConfigured) {
+    return () => {};
+  }
+
   const { data } = supabase.auth.onAuthStateChange((event) => {
     if (event === "SIGNED_OUT") {
       useAuthStore.setState({

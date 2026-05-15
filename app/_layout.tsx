@@ -2,6 +2,7 @@
 import "@/global.css";
 import React, { useEffect } from "react";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useAuthStore, subscribeToAuthChanges } from "@/store/useAuthStore";
@@ -36,6 +37,10 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
+  useEffect(() => {
     // When user logs in, load their progress and courses
     if (user?.id) {
       hydrateProgress(user.id);
@@ -65,7 +70,7 @@ export default function RootLayout() {
   }, [user?.id, syncProgressToSupabase]);
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: "#F8F7FF" }}>
       <StatusBar style="dark" backgroundColor="#F8F7FF" />
       <Stack screenOptions={{ headerShown: false, animation: "fade" }}>
         <Stack.Screen name="index" />

@@ -7,15 +7,22 @@ import "react-native-url-polyfill/auto";
 // ENV VALIDATION
 // ─────────────────────────────────────────────────────────────
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const rawSupabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const rawSupabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    "[FocusLearn] Missing Supabase credentials.\n" +
-      "Copy .env.example → .env and fill in your Supabase project URL and anon key."
-  );
-}
+export const isSupabaseConfigured = Boolean(
+  rawSupabaseUrl &&
+    rawSupabaseAnonKey &&
+    !rawSupabaseUrl.includes("your-project") &&
+    rawSupabaseAnonKey !== "your-anon-key"
+);
+
+const supabaseUrl = isSupabaseConfigured
+  ? rawSupabaseUrl!
+  : "https://placeholder.supabase.co";
+const supabaseAnonKey = isSupabaseConfigured
+  ? rawSupabaseAnonKey!
+  : "placeholder-anon-key";
 
 // ─────────────────────────────────────────────────────────────
 // DATABASE TYPES

@@ -6,10 +6,13 @@ import { useLocalSearchParams, router } from "expo-router";
 import { useVideoPlayer, VideoView as ExpoVideoView } from "expo-video";
 import { MotiView } from "moti";
 import { Button } from "@/components/ui/Button";
-import { Colors, Shadow } from "@/constants/theme";
+import { AiGeneratedQuizView } from "@/components/features/AiGeneratedQuizView";
+import { Colors, Shadow, XPConfig } from "@/constants/theme";
 import { useProgressStore } from "@/store/useProgressStore";
 import { useCoursesStore } from "@/store/useCoursesStore";
 import { MOCK_LESSONS, MOCK_COURSES } from "@/constants/mockData";
+import type { AiQuiz } from "@/types/aiQuiz";
+import { isAiQuiz } from "@/types/aiQuiz";
 
 // ─────────────────────────────────────────────────────────────
 // QUIZ COMPONENT
@@ -471,6 +474,17 @@ function CompletionOverlay({
   );
 }
 
+function parseAiQuizContent(content?: string): AiQuiz | null {
+  if (!content) return null;
+
+  try {
+    const parsed: unknown = JSON.parse(content);
+    return isAiQuiz(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // MAIN SCREEN
 // ─────────────────────────────────────────────────────────────
@@ -478,8 +492,10 @@ function CompletionOverlay({
 export default function LessonScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [showCompletion, setShowCompletion] = useState(false);
+  const [completionXp, setCompletionXp] = useState(0);
 
   const markLessonComplete = useProgressStore((s) => s.markLessonComplete);
+  const unlockBadge = useProgressStore((s) => s.unlockBadge);
   const completedLessonIds = useProgressStore((s) => s.completedLessonIds);
   const lesson = useCoursesStore((s) => s.getLessonById(id || ""));
   const courseLessons = useCoursesStore((s) =>
@@ -491,6 +507,8 @@ export default function LessonScreen() {
 
   // Fallback to MOCK_LESSONS for quiz data (quiz content not in DB yet)
   const mockLesson = id ? MOCK_LESSONS[id] : undefined;
+  const aiQuiz =
+    lesson?.type === "quiz" ? parseAiQuizContent(lesson.content) : null;
   // Fallback to MOCK_COURSES for breadcrumb when DB courses aren't loaded
   const mockCourse = lesson
     ? MOCK_COURSES[lesson.courseId]
@@ -520,8 +538,15 @@ export default function LessonScreen() {
 
   function handleComplete(isPerfect = false) {
     if (!isAlreadyCompleted) {
-      const bonus = isPerfect ? 15 : 0;
-      markLessonComplete(lesson!.id, lesson!.xpReward + bonus);
+      const bonus = isPerfect ? XPConfig.perfectBonus : 0;
+      const xpReward = lesson!.xpReward + bonus;
+      markLessonComplete(lesson!.id, xpReward);
+      if (isPerfect) {
+        unlockBadge("perfect_quiz");
+      }
+      setCompletionXp(xpReward);
+    } else {
+      setCompletionXp(lesson!.xpReward);
     }
     setShowCompletion(true);
   }
@@ -598,7 +623,12 @@ export default function LessonScreen() {
 
         {/* ── Lesson Content ───────────────────────────────── */}
         <View className="px-5 pt-6">
-          {lesson.type === "quiz" && mockLesson?.quiz ? (
+          {lesson.type === "quiz" && aiQuiz ? (
+            <AiGeneratedQuizView
+              quiz={aiQuiz}
+              onComplete={(isPerfect) => handleComplete(isPerfect)}
+            />
+          ) : lesson.type === "quiz" && mockLesson?.quiz ? (
             <QuizView
               quiz={mockLesson.quiz}
               onComplete={(isPerfect) => handleComplete(isPerfect)}
@@ -620,7 +650,7 @@ export default function LessonScreen() {
       {/* ── Completion overlay ───────────────────────────── */}
       {showCompletion && (
         <CompletionOverlay
-          xp={lesson.xpReward}
+          xp={completionXp || lesson.xpReward}
           isReview={isAlreadyCompleted}
           nextLessonId={nextLesson?.id ?? null}
           courseId={lesson.courseId}
