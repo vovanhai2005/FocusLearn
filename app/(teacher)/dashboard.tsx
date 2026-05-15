@@ -13,6 +13,7 @@ import { MotiView } from "moti";
 import { router } from "expo-router";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { TeacherFeatureGrid } from "@/components/features/teacher/TeacherFeatureGrid";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useTeacherStore } from "@/store/useTeacherStore";
 import { Colors, Shadow } from "@/constants/theme";
@@ -117,7 +118,6 @@ function StudentRow({
 export default function DashboardScreen() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const isAuthLoading = useAuthStore((s) => s.isLoading);
   const { stats, isLoading: isTeacherLoading, error, hydrateTeacherData } = useTeacherStore((s) => ({
     stats: s.stats,
     isLoading: s.isLoading,
@@ -140,6 +140,68 @@ export default function DashboardScreen() {
       },
     ]);
   }
+
+  const teacherFeatures = [
+    {
+      title: "Khóa học",
+      description: "Quản lý nội dung lớp",
+      emoji: "📚",
+      color: Colors.primary.DEFAULT,
+      subtleColor: Colors.primary.subtle,
+      metric: String(stats.coursesPublished),
+      onPress: () => router.push("/(teacher)/courses"),
+    },
+    {
+      title: "Học sinh",
+      description: "Theo dõi từng em",
+      emoji: "👥",
+      color: Colors.success.DEFAULT,
+      subtleColor: Colors.success.subtle,
+      metric: String(stats.totalStudents),
+      onPress: () => router.push("/(teacher)/students"),
+    },
+    {
+      title: "Báo cáo",
+      description: "Xem tiến độ lớp",
+      emoji: "📈",
+      color: Colors.info.DEFAULT,
+      subtleColor: Colors.info.subtle,
+      metric: `${stats.avgCompletionRate}%`,
+      onPress: () => router.push("/(teacher)/reports"),
+    },
+    {
+      title: "Tạo khóa",
+      description: "Thêm bài học mới",
+      emoji: "➕",
+      color: Colors.secondary.DEFAULT,
+      subtleColor: Colors.secondary.subtle,
+      onPress: () =>
+        router.push({
+          pathname: "/(teacher)/create",
+          params: { mode: "course" },
+        }),
+    },
+    {
+      title: "Quiz AI",
+      description: "Sinh câu hỏi nhanh",
+      emoji: "✨",
+      color: Colors.warning.DEFAULT,
+      subtleColor: Colors.warning.subtle,
+      onPress: () =>
+        router.push({
+          pathname: "/(teacher)/create",
+          params: { mode: "quiz" },
+        }),
+    },
+    {
+      title: "Mã lớp",
+      description: user?.accessCode ?? "Chưa có mã",
+      emoji: "🔑",
+      color: Colors.error.DEFAULT,
+      subtleColor: Colors.error.subtle,
+      onPress: () => router.push("/(teacher)/students"),
+    },
+  ];
 
   return (
     <SafeAreaView className="flex-1 bg-bg">
@@ -166,7 +228,9 @@ export default function DashboardScreen() {
             </View>
             <TouchableOpacity
               onPress={handleLogout}
-              className="bg-white bg-opacity-20 rounded-full px-3 py-1.5 min-h-[36px] justify-center"
+              activeOpacity={0.84}
+              style={[Shadow.sm, { backgroundColor: Colors.error.DEFAULT }]}
+              className="rounded-xl px-3 py-2 min-h-[42px] justify-center"
             >
               <Text className="text-sm font-semibold text-white">Thoát 👋</Text>
             </TouchableOpacity>
@@ -180,6 +244,10 @@ export default function DashboardScreen() {
             </Text>
           </View>
         </MotiView>
+
+        <View className="px-5 pt-6">
+          <TeacherFeatureGrid items={teacherFeatures} />
+        </View>
 
         {error ? (
           <View className="px-5 pt-6">

@@ -32,6 +32,14 @@ const supabaseAnonKey = isSupabaseConfigured
 
 // ── Standalone Row types (avoid circular self-references) ───────────────────
 
+type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
+
 type UsersRow = {
   id: string;
   name: string;
@@ -111,7 +119,116 @@ type XPLogsRow = {
   earned_at: string;
 };
 
+type SourceDocumentsRow = {
+  id: string;
+  teacher_id: string;
+  file_name: string;
+  mime_type: string | null;
+  file_size_bytes: number | null;
+  storage_path: string | null;
+  public_url: string | null;
+  created_at: string;
+};
+
+type AiQuizzesRow = {
+  id: string;
+  lesson_id: string;
+  course_id: string;
+  teacher_id: string;
+  source_document_id: string | null;
+  title: string;
+  summary: string;
+  generated_from: string;
+  subject: string | null;
+  language: "vi" | "en";
+  requested_difficulty: "easy" | "medium" | "hard" | "mixed";
+  requested_question_count: number;
+  validation_warnings: string[];
+  raw_payload: Json;
+  created_at: string;
+  updated_at: string;
+};
+
+type AiQuizQuestionsRow = {
+  id: string;
+  quiz_id: string;
+  order_index: number;
+  question_text: string;
+  correct_choice_id: "A" | "B" | "C" | "D";
+  explanation: string;
+  difficulty: "easy" | "medium" | "hard";
+  source_reference: string | null;
+  learning_objective: string | null;
+  created_at: string;
+};
+
+type AiQuizChoicesRow = {
+  id: string;
+  question_id: string;
+  choice_id: "A" | "B" | "C" | "D";
+  order_index: number;
+  choice_text: string;
+  is_correct: boolean;
+  created_at: string;
+};
+
+type AiQuizAttemptsRow = {
+  id: string;
+  quiz_id: string;
+  lesson_id: string;
+  user_id: string;
+  total_questions: number;
+  correct_count: number;
+  score: number;
+  started_at: string;
+  completed_at: string | null;
+};
+
+type AiQuizAnswersRow = {
+  id: string;
+  attempt_id: string;
+  question_id: string;
+  selected_choice_id: "A" | "B" | "C" | "D";
+  is_correct: boolean;
+  answered_at: string;
+};
+
 // ── Database schema ──────────────────────────────────────────────────────────
+
+type ClassesRow = {
+  id: string;
+  name: string;
+  grade: number | null;
+  teacher_id: string;
+  school: string | null;
+  academic_year: string;
+  access_code: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ClassStudentsRow = {
+  id: string;
+  class_id: string;
+  student_id: string;
+  joined_at: string;
+  status: "active" | "inactive" | "transferred";
+};
+
+type CourseEnrollmentsRow = {
+  id: string;
+  course_id: string;
+  student_id: string;
+  class_id: string | null;
+  assigned_by: string | null;
+  status: "active" | "completed" | "paused";
+  assigned_at: string;
+  completed_at: string | null;
+  target_due_date: string | null;
+  progress_percent: number;
+  last_activity_at: string | null;
+};
 
 export interface Database {
   public: {
@@ -150,6 +267,60 @@ export interface Database {
         Row: XPLogsRow;
         Insert: Omit<XPLogsRow, "id">;
         Update: never;
+        Relationships: [];
+      };
+      source_documents: {
+        Row: SourceDocumentsRow;
+        Insert: Omit<SourceDocumentsRow, "id" | "created_at">;
+        Update: Partial<Omit<SourceDocumentsRow, "id" | "created_at">>;
+        Relationships: [];
+      };
+      ai_quizzes: {
+        Row: AiQuizzesRow;
+        Insert: Omit<AiQuizzesRow, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<AiQuizzesRow, "id" | "created_at" | "updated_at">>;
+        Relationships: [];
+      };
+      ai_quiz_questions: {
+        Row: AiQuizQuestionsRow;
+        Insert: Omit<AiQuizQuestionsRow, "id" | "created_at">;
+        Update: Partial<Omit<AiQuizQuestionsRow, "id" | "created_at">>;
+        Relationships: [];
+      };
+      ai_quiz_choices: {
+        Row: AiQuizChoicesRow;
+        Insert: Omit<AiQuizChoicesRow, "id" | "created_at">;
+        Update: Partial<Omit<AiQuizChoicesRow, "id" | "created_at">>;
+        Relationships: [];
+      };
+      ai_quiz_attempts: {
+        Row: AiQuizAttemptsRow;
+        Insert: Omit<AiQuizAttemptsRow, "id">;
+        Update: Partial<Omit<AiQuizAttemptsRow, "id">>;
+        Relationships: [];
+      };
+      ai_quiz_answers: {
+        Row: AiQuizAnswersRow;
+        Insert: Omit<AiQuizAnswersRow, "id">;
+        Update: Partial<Omit<AiQuizAnswersRow, "id">>;
+        Relationships: [];
+      };
+      classes: {
+        Row: ClassesRow;
+        Insert: Omit<ClassesRow, "id" | "created_at" | "updated_at">;
+        Update: Partial<Omit<ClassesRow, "id" | "created_at" | "updated_at">>;
+        Relationships: [];
+      };
+      class_students: {
+        Row: ClassStudentsRow;
+        Insert: Omit<ClassStudentsRow, "id">;
+        Update: Partial<Omit<ClassStudentsRow, "id">>;
+        Relationships: [];
+      };
+      course_enrollments: {
+        Row: CourseEnrollmentsRow;
+        Insert: Omit<CourseEnrollmentsRow, "id">;
+        Update: Partial<Omit<CourseEnrollmentsRow, "id">>;
         Relationships: [];
       };
     };

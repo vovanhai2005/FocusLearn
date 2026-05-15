@@ -26,6 +26,7 @@ interface TeacherStats {
   activeToday: number;
   avgCompletionRate: number;
   coursesPublished: number;
+  allStudents: StudentWithStats[];
   topStudents: StudentWithStats[];
   studentsNeedingAttention: StudentWithStats[];
 }
@@ -64,6 +65,7 @@ const initialStats: TeacherStats = {
   activeToday: 0,
   avgCompletionRate: 0,
   coursesPublished: 0,
+  allStudents: [],
   topStudents: [],
   studentsNeedingAttention: [],
 };
@@ -94,18 +96,6 @@ export const useTeacherStore = create<TeacherState>((set) => ({
       const students = (studentsData || []).map(rowToUser);
       const studentIds = students.map((s) => s.id);
 
-      // If no students, return early with 0 stats
-      if (studentIds.length === 0) {
-        set({
-          stats: {
-            ...initialStats,
-            totalStudents: 0,
-          },
-          isLoading: false,
-        });
-        return;
-      }
-
       // 2. Fetch all courses created by this teacher
       const { data: coursesData, error: coursesError } = await supabase
         .from("courses")
@@ -116,6 +106,19 @@ export const useTeacherStore = create<TeacherState>((set) => ({
 
       const courses = (coursesData || []) as CoursesRow[];
       const courseIds = courses.map((c) => c.id);
+
+      // If no students, return early with 0 stats
+      if (studentIds.length === 0) {
+        set({
+          stats: {
+            ...initialStats,
+            totalStudents: 0,
+            coursesPublished: courses.length,
+          },
+          isLoading: false,
+        });
+        return;
+      }
 
       // 3. Fetch progress for all students
       const { data: progressData, error: progressError } = await supabase
@@ -203,6 +206,7 @@ export const useTeacherStore = create<TeacherState>((set) => ({
           activeToday: activeCount,
           avgCompletionRate: Math.round(avgCompletionRate),
           coursesPublished: courses.length,
+          allStudents: studentsWithStats,
           topStudents,
           studentsNeedingAttention,
         },

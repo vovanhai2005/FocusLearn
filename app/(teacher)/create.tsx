@@ -1,120 +1,152 @@
 // filepath: app/(teacher)/create.tsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MotiView } from "moti";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
+import { AiQuizGeneratorSection } from "@/components/features/teacher/AiQuizGeneratorSection";
+import { CourseSetupSection } from "@/components/features/teacher/CourseSetupSection";
+import {
+  COLOR_OPTIONS,
+  EMOJI_OPTIONS,
+  type CourseColorOption,
+  type CourseDifficulty,
+} from "@/components/features/teacher/teacherCreateOptions";
 import { Colors, Shadow, XPConfig } from "@/constants/theme";
 import { supabase, type Database } from "@/lib/supabase";
-import { useAuthStore } from "@/store/useAuthStore";
 import { useAiQuizStore } from "@/store/useAiQuizStore";
+import { useAuthStore } from "@/store/useAuthStore";
 import { useCoursesStore } from "@/store/useCoursesStore";
-import type {
-  GenerateQuizDifficulty,
-  GenerateQuizLanguage,
-} from "@/types/aiQuiz";
 
 type CourseInsert = Database["public"]["Tables"]["courses"]["Insert"];
 type LessonInsert = Database["public"]["Tables"]["lessons"]["Insert"];
+type SourceDocumentInsert =
+  Database["public"]["Tables"]["source_documents"]["Insert"];
+type AiQuizInsert = Database["public"]["Tables"]["ai_quizzes"]["Insert"];
+type AiQuizQuestionInsert =
+  Database["public"]["Tables"]["ai_quiz_questions"]["Insert"];
+type AiQuizChoiceInsert =
+  Database["public"]["Tables"]["ai_quiz_choices"]["Insert"];
+type CreateMode = "course" | "quiz";
 
-// ─────────────────────────────────────────────────────────────
-// MOCK OPTIONS
-// ─────────────────────────────────────────────────────────────
-
-const EMOJI_OPTIONS = [
-  "🔢", "🌿", "📖", "🎨", "🎵", "🔬",
-  "🌍", "💡", "🏃", "🖥️", "🎭", "🚀",
-];
-
-const COLOR_OPTIONS = [
-  { key: "primary",   label: "Tím",        value: Colors.primary.DEFAULT,   subtle: Colors.primary.subtle   },
-  { key: "success",   label: "Xanh lá",    value: Colors.success.DEFAULT,   subtle: Colors.success.subtle   },
-  { key: "secondary", label: "Cam",        value: Colors.secondary.DEFAULT,  subtle: Colors.secondary.subtle },
-  { key: "warning",   label: "Vàng",       value: Colors.warning.DEFAULT,   subtle: Colors.warning.subtle   },
-  { key: "info",      label: "Xanh dương", value: Colors.info.DEFAULT,      subtle: Colors.info.subtle      },
-  { key: "error",     label: "Đỏ",         value: Colors.error.DEFAULT,     subtle: Colors.error.subtle     },
-];
-
-const DIFFICULTY_OPTIONS = [
-  { label: "😊 Dễ",   value: "easy"   },
-  { label: "🤔 Vừa",  value: "medium" },
-  { label: "🔥 Khó",  value: "hard"   },
-] as const;
-
-const AI_DIFFICULTY_OPTIONS: readonly {
+const CREATE_MODE_TABS: readonly {
+  mode: CreateMode;
   label: string;
-  value: GenerateQuizDifficulty;
+  emoji: string;
+  description: string;
 }[] = [
-  { label: "Dễ", value: "easy" },
-  { label: "Vừa", value: "medium" },
-  { label: "Khó", value: "hard" },
-  { label: "Trộn", value: "mixed" },
+  {
+    mode: "course",
+    label: "Tạo khóa học",
+    emoji: "📚",
+    description: "Tạo khóa mới để giao bài cho học sinh",
+  },
+  {
+    mode: "quiz",
+    label: "Tạo quiz AI",
+    emoji: "✨",
+    description: "Upload tài liệu và lưu quiz vào lesson",
+  },
 ];
 
-const LANGUAGE_OPTIONS: readonly {
-  label: string;
-  value: GenerateQuizLanguage;
-}[] = [
-  { label: "Tiếng Việt", value: "vi" },
-  { label: "English", value: "en" },
-];
+function dbErrorMessage(
+  action: string,
+  error: { code?: string; message?: string } | null
+): string {
+  if (!error?.message) return action;
+  return `${action}: ${error.message}`;
+}
 
-type CourseDifficulty = "easy" | "medium" | "hard";
+function CreateModeHeader({
+  mode,
+  onModeChange,
+}: {
+  mode: CreateMode;
+  onModeChange: (mode: CreateMode) => void;
+}) {
+  const activeTab = CREATE_MODE_TABS.find((tab) => tab.mode === mode);
 
-// ─────────────────────────────────────────────────────────────
-// SECTION HEADER
-// ─────────────────────────────────────────────────────────────
-
-function SectionHeader({ label }: { label: string }) {
   return (
-    <Text className="text-lg font-bold text-text mb-1">{label}</Text>
+    <View className="px-5 pt-6 gap-4">
+      <View className="gap-1">
+        <Text className="text-4xl font-extrabold text-text">Tạo nội dung</Text>
+        <Text className="text-base text-text-muted">
+          {activeTab?.description}
+        </Text>
+      </View>
+
+      <View
+        style={[Shadow.sm, { backgroundColor: Colors.bg.card }]}
+        className="flex-row rounded-2xl border border-border p-1.5"
+      >
+        {CREATE_MODE_TABS.map((tab) => {
+          const isActive = tab.mode === mode;
+
+          return (
+            <TouchableOpacity
+              key={tab.mode}
+              onPress={() => onModeChange(tab.mode)}
+              activeOpacity={0.85}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              className="flex-1 min-h-[52px] rounded-xl items-center justify-center px-2"
+              style={{
+                backgroundColor: isActive
+                  ? Colors.primary.DEFAULT
+                  : "transparent",
+              }}
+            >
+              <Text
+                className="text-base font-extrabold text-center"
+                numberOfLines={1}
+                style={{
+                  color: isActive ? Colors.text.inverse : Colors.text.muted,
+                }}
+              >
+                {tab.emoji} {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
   );
 }
 
-function mapAiDifficultyToCourseDifficulty(
-  value: GenerateQuizDifficulty
-): CourseDifficulty {
-  return value === "mixed" ? "medium" : value;
-}
-
-// ─────────────────────────────────────────────────────────────
-// SCREEN
-// ─────────────────────────────────────────────────────────────
-
 export default function CreateScreen() {
-  const user = useAuthStore((s) => s.user);
-  const courses = useCoursesStore((s) => s.courses);
-  const hydrateCourses = useCoursesStore((s) => s.hydrateCourses);
-  const selectedAsset = useAiQuizStore((s) => s.selectedAsset);
-  const numQuestions = useAiQuizStore((s) => s.numQuestions);
-  const aiDifficulty = useAiQuizStore((s) => s.difficulty);
-  const language = useAiQuizStore((s) => s.language);
-  const subject = useAiQuizStore((s) => s.subject);
-  const isGenerating = useAiQuizStore((s) => s.isGenerating);
-  const aiError = useAiQuizStore((s) => s.error);
-  const aiResult = useAiQuizStore((s) => s.result);
-  const pickDocument = useAiQuizStore((s) => s.pickDocument);
-  const clearDocument = useAiQuizStore((s) => s.clearDocument);
-  const setNumQuestions = useAiQuizStore((s) => s.setNumQuestions);
-  const setAiDifficulty = useAiQuizStore((s) => s.setDifficulty);
-  const setLanguage = useAiQuizStore((s) => s.setLanguage);
-  const setSubject = useAiQuizStore((s) => s.setSubject);
-  const generateQuiz = useAiQuizStore((s) => s.generate);
-  const resetAiQuiz = useAiQuizStore((s) => s.reset);
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const user = useAuthStore((state) => state.user);
+  const courses = useCoursesStore((state) => state.courses);
+  const hydrateCourses = useCoursesStore((state) => state.hydrateCourses);
+  const selectedAsset = useAiQuizStore((state) => state.selectedAsset);
+  const numQuestions = useAiQuizStore((state) => state.numQuestions);
+  const aiDifficulty = useAiQuizStore((state) => state.difficulty);
+  const language = useAiQuizStore((state) => state.language);
+  const subject = useAiQuizStore((state) => state.subject);
+  const isGenerating = useAiQuizStore((state) => state.isGenerating);
+  const aiError = useAiQuizStore((state) => state.error);
+  const aiResult = useAiQuizStore((state) => state.result);
+  const pickDocument = useAiQuizStore((state) => state.pickDocument);
+  const clearDocument = useAiQuizStore((state) => state.clearDocument);
+  const setNumQuestions = useAiQuizStore((state) => state.setNumQuestions);
+  const setAiDifficulty = useAiQuizStore((state) => state.setDifficulty);
+  const setLanguage = useAiQuizStore((state) => state.setLanguage);
+  const setSubject = useAiQuizStore((state) => state.setSubject);
+  const generateQuiz = useAiQuizStore((state) => state.generate);
+  const resetAiQuiz = useAiQuizStore((state) => state.reset);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedEmoji, setSelectedEmoji] = useState(EMOJI_OPTIONS[0]);
-  const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0]);
+  const [selectedEmoji, setSelectedEmoji] = useState<string>(EMOJI_OPTIONS[0]);
+  const [selectedColor, setSelectedColor] =
+    useState<CourseColorOption>(COLOR_OPTIONS[0]);
   const [courseDifficulty, setCourseDifficulty] =
     useState<CourseDifficulty>("easy");
   const [isCreating, setIsCreating] = useState(false);
@@ -122,6 +154,13 @@ export default function CreateScreen() {
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [isSavingQuiz, setIsSavingQuiz] = useState(false);
   const [saveQuizError, setSaveQuizError] = useState<string | null>(null);
+  const [createMode, setCreateMode] = useState<CreateMode>("course");
+
+  useEffect(() => {
+    if (params.mode === "course" || params.mode === "quiz") {
+      setCreateMode(params.mode);
+    }
+  }, [params.mode]);
 
   const canCreate = title.trim().length >= 3;
   const teacherCourses = useMemo(
@@ -133,12 +172,8 @@ export default function CreateScreen() {
       user &&
       !isGenerating &&
       !isSavingQuiz &&
-      (selectedCourseId || canCreate)
+      selectedCourseId
   );
-
-  // Preview card derived state
-  const previewBg = selectedColor.subtle;
-  const previewBorder = selectedColor.value;
 
   async function insertCourse(
     difficultyForCourse: CourseDifficulty
@@ -166,7 +201,7 @@ export default function CreateScreen() {
       .single();
 
     if (error || !data) {
-      throw new Error("Không thể tạo khóa học. Vui lòng thử lại.");
+      throw new Error(dbErrorMessage("Không thể tạo khóa học", error));
     }
 
     return data.id;
@@ -179,7 +214,7 @@ export default function CreateScreen() {
       .eq("course_id", courseId);
 
     if (error) {
-      throw new Error("Không thể kiểm tra số bài học hiện có.");
+      throw new Error(dbErrorMessage("Không thể kiểm tra số bài học hiện có", error));
     }
 
     return (count ?? 0) + 1;
@@ -204,7 +239,119 @@ export default function CreateScreen() {
       .eq("id", courseId);
 
     if (error) {
-      throw new Error("Quiz đã lưu, nhưng chưa cập nhật được thống kê khóa học.");
+      throw new Error(dbErrorMessage("Quiz đã lưu, nhưng chưa cập nhật được thống kê khóa học", error));
+    }
+  }
+
+  async function insertSourceDocument(): Promise<string | null> {
+    if (!user || !selectedAsset) return null;
+
+    const payload: SourceDocumentInsert = {
+      teacher_id: user.id,
+      file_name: selectedAsset.name,
+      mime_type: selectedAsset.mimeType ?? null,
+      file_size_bytes: selectedAsset.size ?? null,
+      storage_path: null,
+      public_url: null,
+    };
+
+    const { data, error } = await supabase
+      .from("source_documents")
+      .insert(payload)
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      throw new Error(dbErrorMessage("Không thể lưu thông tin tài liệu tạo quiz", error));
+    }
+
+    return data.id;
+  }
+
+  async function insertAiQuizRecords(
+    courseId: string,
+    lessonId: string
+  ): Promise<void> {
+    if (!aiResult || !user) return;
+
+    const sourceDocumentId = await insertSourceDocument();
+    const rawPayload = JSON.parse(
+      JSON.stringify(aiResult.quiz)
+    ) as AiQuizInsert["raw_payload"];
+    const quizPayload: AiQuizInsert = {
+      lesson_id: lessonId,
+      course_id: courseId,
+      teacher_id: user.id,
+      source_document_id: sourceDocumentId,
+      title: aiResult.quiz.title,
+      summary: aiResult.quiz.summary,
+      generated_from: aiResult.quiz.generated_from,
+      subject: subject.trim() || null,
+      language,
+      requested_difficulty: aiDifficulty,
+      requested_question_count: numQuestions,
+      validation_warnings: aiResult.validation_warnings,
+      raw_payload: rawPayload,
+    };
+
+    const { data: quizData, error: quizError } = await supabase
+      .from("ai_quizzes")
+      .insert(quizPayload)
+      .select("id")
+      .single();
+
+    if (quizError || !quizData) {
+      throw new Error(dbErrorMessage("Không thể lưu bộ câu hỏi AI", quizError));
+    }
+
+    const questionRows: AiQuizQuestionInsert[] = aiResult.quiz.questions.map(
+      (question, index) => ({
+        quiz_id: quizData.id,
+        order_index: index + 1,
+        question_text: question.question,
+        correct_choice_id: question.correct_answer,
+        explanation: question.explanation,
+        difficulty: question.difficulty,
+        source_reference: question.source_reference,
+        learning_objective: question.learning_objective,
+      })
+    );
+
+    const { data: savedQuestions, error: questionError } = await supabase
+      .from("ai_quiz_questions")
+      .insert(questionRows)
+      .select("id, order_index");
+
+    if (questionError || !savedQuestions || savedQuestions.length === 0) {
+      throw new Error(dbErrorMessage("Không thể lưu danh sách câu hỏi", questionError));
+    }
+
+    const questionIdByOrder = new Map<number, string>();
+    savedQuestions.forEach((question) => {
+      questionIdByOrder.set(question.order_index, question.id);
+    });
+
+    const choiceRows: AiQuizChoiceInsert[] = aiResult.quiz.questions.flatMap(
+      (question, questionIndex) => {
+        const questionId = questionIdByOrder.get(questionIndex + 1);
+        if (!questionId) return [];
+
+        return question.choices.map((choice, choiceIndex) => ({
+          question_id: questionId,
+          choice_id: choice.id,
+          order_index: choiceIndex + 1,
+          choice_text: choice.text,
+          is_correct: choice.id === question.correct_answer,
+        }));
+      }
+    );
+
+    const { error: choiceError } = await supabase
+      .from("ai_quiz_choices")
+      .insert(choiceRows);
+
+    if (choiceError) {
+      throw new Error(dbErrorMessage("Không thể lưu đáp án của quiz", choiceError));
     }
   }
 
@@ -214,19 +361,24 @@ export default function CreateScreen() {
     setCreateError(null);
 
     try {
-      await insertCourse(courseDifficulty);
+      const courseTitle = title.trim();
+      const newCourseId = await insertCourse(courseDifficulty);
+      setSelectedCourseId(newCourseId);
       await hydrateCourses();
+      setTitle("");
+      setDescription("");
+      setCreateError(null);
+
       Alert.alert(
-        "🎉 Tạo thành công!",
-        `Khóa học "${title.trim()}" đã được tạo. Bạn có thể thêm bài học ngay bây giờ.`,
+        "Tạo khóa học thành công",
+        `Khóa học "${courseTitle}" đã được tạo. Bạn có thể chuyển sang Tạo quiz AI để thêm bài quiz vào khóa này.`,
         [
           {
-            text: "Tuyệt!",
-            onPress: () => {
-              setTitle("");
-              setDescription("");
-              setCreateError(null);
-            },
+            text: "Ở lại",
+          },
+          {
+            text: "Tạo quiz",
+            onPress: () => setCreateMode("quiz"),
           },
         ]
       );
@@ -242,17 +394,13 @@ export default function CreateScreen() {
   }
 
   async function handleSaveAiQuiz() {
-    if (!aiResult || !user || !canSaveAiQuiz) return;
+    if (!aiResult || !user || !selectedCourseId || !canSaveAiQuiz) return;
 
     setIsSavingQuiz(true);
     setSaveQuizError(null);
 
-    const createdNewCourse = !selectedCourseId;
-
     try {
-      const courseId =
-        selectedCourseId ??
-        (await insertCourse(mapAiDifficultyToCourseDifficulty(aiDifficulty)));
+      const courseId = selectedCourseId;
       const lessonOrder = await getNextLessonOrder(courseId);
       const durationSeconds = aiResult.quiz.questions.length * 60;
       const xpReward = XPConfig.lessonBase + XPConfig.quizBonus;
@@ -269,11 +417,16 @@ export default function CreateScreen() {
         is_published: true,
       };
 
-      const { error } = await supabase.from("lessons").insert(payload);
-      if (error) {
-        throw new Error("Không thể lưu quiz thành bài học. Vui lòng thử lại.");
+      const { data: lessonData, error } = await supabase
+        .from("lessons")
+        .insert(payload)
+        .select("id")
+        .single();
+      if (error || !lessonData) {
+        throw new Error(dbErrorMessage("Không thể lưu quiz thành bài học", error));
       }
 
+      await insertAiQuizRecords(courseId, lessonData.id);
       await updateCourseStats(courseId, lessonOrder, durationSeconds);
       await hydrateCourses();
       setSelectedCourseId(courseId);
@@ -287,10 +440,6 @@ export default function CreateScreen() {
             onPress: () => {
               resetAiQuiz();
               setSaveQuizError(null);
-              if (createdNewCourse) {
-                setTitle("");
-                setDescription("");
-              }
             },
           },
         ]
@@ -336,21 +485,10 @@ export default function CreateScreen() {
     setSaveQuizError(null);
   }
 
-  function renderSaveHint() {
-    if (!aiResult || selectedCourseId) return null;
-    if (canCreate) {
-      return (
-        <Text className="text-sm text-text-muted text-center">
-          Chưa chọn khóa học có sẵn, quiz sẽ được lưu vào khóa học mới từ form phía trên.
-        </Text>
-      );
-    }
-
-    return (
-      <Text className="text-sm text-error text-center">
-        Nhập tên khóa học phía trên hoặc chọn một khóa học có sẵn để lưu quiz.
-      </Text>
-    );
+  function handleCreateModeChange(nextMode: CreateMode) {
+    setCreateMode(nextMode);
+    setCreateError(null);
+    setSaveQuizError(null);
   }
 
   return (
@@ -364,570 +502,56 @@ export default function CreateScreen() {
           contentContainerStyle={{ paddingBottom: 32 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* ── Header ──────────────────────────────────────── */}
-          <MotiView
-            from={{ opacity: 0, translateY: -12 }}
-            animate={{ opacity: 1, translateY: 0 }}
-            transition={{ type: "spring", damping: 22 }}
-            className="px-5 pt-6 pb-4 gap-1"
-          >
-            <Text className="text-4xl font-extrabold text-text">➕ Tạo khóa học</Text>
-            <Text className="text-base text-text-muted">
-              Tạo micro-lecture cho học sinh của bạn
-            </Text>
-          </MotiView>
-
-          {/* ── Live preview card ────────────────────────────── */}
-          <MotiView
-            from={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 100, type: "spring", damping: 20 }}
-            className="mx-5 mb-5"
-          >
-            <View
-              style={[
-                Shadow.md,
-                { backgroundColor: previewBg, borderColor: previewBorder, borderWidth: 2 },
-              ]}
-              className="rounded-2xl p-5 flex-row items-center gap-4"
-            >
-              <Text style={{ fontSize: 40 }}>{selectedEmoji}</Text>
-              <View className="flex-1">
-                <Text className="text-xl font-extrabold text-text" numberOfLines={1}>
-                  {title.trim() || "Tên khóa học..."}
-                </Text>
-                <Text className="text-sm text-text-muted mt-0.5">
-                  {DIFFICULTY_OPTIONS.find((d) => d.value === courseDifficulty)?.label} ·{" "}
-                  {selectedColor.label}
-                </Text>
-              </View>
-            </View>
-          </MotiView>
-
-          <View className="px-5 gap-5">
-            {/* ── Title & description ─────────────────────────── */}
-            <MotiView
-              from={{ opacity: 0, translateY: 12 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ delay: 150, type: "spring", damping: 22 }}
-              className="gap-4"
-            >
-              <Input
-                label="Tên khóa học *"
-                leftEmoji="📝"
-                placeholder="VD: Toán lớp 3 - Phép nhân"
-                value={title}
-                onChangeText={setTitle}
-                maxLength={60}
-                returnKeyType="next"
+          <CreateModeHeader
+            mode={createMode}
+            onModeChange={handleCreateModeChange}
+          />
+          <View className="px-5 pt-5 gap-5">
+            {createMode === "course" ? (
+              <CourseSetupSection
+                title={title}
+                description={description}
+                selectedEmoji={selectedEmoji}
+                selectedColor={selectedColor}
+                courseDifficulty={courseDifficulty}
+                canCreate={canCreate}
+                isCreating={isCreating}
+                createError={createError}
+                onTitleChange={setTitle}
+                onDescriptionChange={setDescription}
+                onEmojiChange={setSelectedEmoji}
+                onColorChange={setSelectedColor}
+                onDifficultyChange={setCourseDifficulty}
+                onCreate={handleCreate}
               />
-              <Input
-                label="Mô tả (không bắt buộc)"
-                leftEmoji="💬"
-                placeholder="Mô tả ngắn về khóa học..."
-                value={description}
-                onChangeText={setDescription}
-                maxLength={200}
-                multiline
+            ) : (
+              <AiQuizGeneratorSection
+                teacherCourses={teacherCourses}
+                selectedCourseId={selectedCourseId}
+                selectedAsset={selectedAsset}
+                numQuestions={numQuestions}
+                aiDifficulty={aiDifficulty}
+                language={language}
+                subject={subject}
+                isGenerating={isGenerating}
+                aiError={aiError}
+                aiResult={aiResult}
+                canCreateCourseFromForm={false}
+                canSaveAiQuiz={canSaveAiQuiz}
+                isSavingQuiz={isSavingQuiz}
+                saveQuizError={saveQuizError}
+                onSelectCourse={handleSelectCourse}
+                onPickDocument={handlePickDocument}
+                onClearDocument={handleClearDocument}
+                onQuestionCountChange={handleQuestionCountChange}
+                onDifficultyChange={setAiDifficulty}
+                onLanguageChange={setLanguage}
+                onSubjectChange={setSubject}
+                onGenerateQuiz={handleGenerateQuiz}
+                onSaveAiQuiz={handleSaveAiQuiz}
+                onResetAiQuiz={handleResetAiQuiz}
               />
-            </MotiView>
-
-            {/* ── Emoji picker ────────────────────────────────── */}
-            <MotiView
-              from={{ opacity: 0, translateY: 12 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ delay: 220, type: "spring", damping: 22 }}
-              className="gap-3"
-            >
-              <SectionHeader label="🎭 Chọn biểu tượng" />
-              <View className="flex-row flex-wrap gap-2.5">
-                {EMOJI_OPTIONS.map((emoji) => (
-                  <TouchableOpacity
-                    key={emoji}
-                    onPress={() => setSelectedEmoji(emoji)}
-                    activeOpacity={0.75}
-                    style={{
-                      backgroundColor:
-                        selectedEmoji === emoji
-                          ? Colors.primary.subtle
-                          : Colors.bg.muted,
-                      borderColor:
-                        selectedEmoji === emoji
-                          ? Colors.primary.DEFAULT
-                          : Colors.border.DEFAULT,
-                      borderWidth: 2,
-                    }}
-                    className="w-14 h-14 rounded-xl items-center justify-center"
-                  >
-                    <MotiView
-                      animate={{ scale: selectedEmoji === emoji ? 1.2 : 1 }}
-                      transition={{ type: "spring", damping: 15 }}
-                    >
-                      <Text style={{ fontSize: 26 }}>{emoji}</Text>
-                    </MotiView>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </MotiView>
-
-            {/* ── Color picker ────────────────────────────────── */}
-            <MotiView
-              from={{ opacity: 0, translateY: 12 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ delay: 290, type: "spring", damping: 22 }}
-              className="gap-3"
-            >
-              <SectionHeader label="🎨 Màu sắc" />
-              <View className="flex-row flex-wrap gap-2.5">
-                {COLOR_OPTIONS.map((color) => {
-                  const isSelected = selectedColor.value === color.value;
-                  return (
-                    <TouchableOpacity
-                      key={color.value}
-                      onPress={() => setSelectedColor(color)}
-                      activeOpacity={0.8}
-                      style={{
-                        borderColor: isSelected ? color.value : Colors.border.DEFAULT,
-                        borderWidth: isSelected ? 3 : 1.5,
-                        ...Shadow.sm,
-                      }}
-                      className="rounded-xl overflow-hidden"
-                    >
-                      <MotiView
-                        animate={{ scale: isSelected ? 1.06 : 1 }}
-                        transition={{ type: "spring", damping: 15 }}
-                        style={{ backgroundColor: color.subtle }}
-                        className="px-4 py-2.5 items-center gap-1"
-                      >
-                        <View
-                          style={{
-                            backgroundColor: color.value,
-                            width: 24,
-                            height: 24,
-                            borderRadius: 12,
-                          }}
-                        />
-                        <Text className="text-xs font-semibold text-text-muted">
-                          {color.label}
-                        </Text>
-                      </MotiView>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </MotiView>
-
-            {/* ── Difficulty ──────────────────────────────────── */}
-            <MotiView
-              from={{ opacity: 0, translateY: 12 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ delay: 360, type: "spring", damping: 22 }}
-              className="gap-3"
-            >
-              <SectionHeader label="📊 Độ khó" />
-              <View className="flex-row gap-2.5">
-                {DIFFICULTY_OPTIONS.map((opt) => {
-                  const isSelected = courseDifficulty === opt.value;
-                  return (
-                    <TouchableOpacity
-                      key={opt.value}
-                      onPress={() => setCourseDifficulty(opt.value)}
-                      activeOpacity={0.8}
-                      style={{
-                        flex: 1,
-                        backgroundColor: isSelected
-                          ? Colors.primary.subtle
-                          : Colors.bg.muted,
-                        borderColor: isSelected
-                          ? Colors.primary.DEFAULT
-                          : Colors.border.DEFAULT,
-                        borderWidth: 2,
-                      }}
-                      className="rounded-xl py-3 items-center min-h-[48px] justify-center"
-                    >
-                      <MotiView
-                        animate={{ scale: isSelected ? 1.05 : 1 }}
-                        transition={{ type: "spring", damping: 15 }}
-                      >
-                        <Text
-                          style={{
-                            color: isSelected
-                              ? Colors.primary.DEFAULT
-                              : Colors.text.muted,
-                            fontSize: 14,
-                            fontWeight: isSelected ? "700" : "500",
-                          }}
-                        >
-                          {opt.label}
-                        </Text>
-                      </MotiView>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </MotiView>
-
-            {/* ── Create button ────────────────────────────────── */}
-            <MotiView
-              from={{ opacity: 0, translateY: 12 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ delay: 430, type: "spring", damping: 22 }}
-            >
-              <Button
-                label="Tạo khóa học"
-                leftEmoji="🚀"
-                variant="primary"
-                size="lg"
-                fullWidth
-                disabled={!canCreate}
-                loading={isCreating}
-                onPress={handleCreate}
-              />
-              {!canCreate && (
-                <Text className="text-sm text-text-muted text-center mt-2">
-                  Tên khóa học phải có ít nhất 3 ký tự
-                </Text>
-              )}
-              {createError && (
-                <Text className="text-sm text-error text-center mt-2">{createError}</Text>
-              )}
-            </MotiView>
-
-            {/* ── AI quiz generator ─────────────────────────────── */}
-            <MotiView
-              from={{ opacity: 0, translateY: 12 }}
-              animate={{ opacity: 1, translateY: 0 }}
-              transition={{ delay: 500, type: "spring", damping: 22 }}
-              style={[Shadow.md, { backgroundColor: Colors.bg.card }]}
-              className="rounded-2xl p-5 gap-5"
-            >
-              <View className="gap-1">
-                <Text className="text-2xl font-extrabold text-text">
-                  Tạo quiz AI từ tài liệu
-                </Text>
-                <Text className="text-base text-text-muted">
-                  Upload PDF, DOCX, PPTX, TXT hoặc MD để tạo bài quiz trắc nghiệm.
-                </Text>
-              </View>
-
-              <View className="gap-3">
-                <SectionHeader label="Lưu vào khóa học" />
-                {teacherCourses.length > 0 ? (
-                  <View className="gap-2">
-                    {teacherCourses.map((course) => {
-                      const isSelected = selectedCourseId === course.id;
-                      return (
-                        <TouchableOpacity
-                          key={course.id}
-                          onPress={() => handleSelectCourse(course.id)}
-                          activeOpacity={0.8}
-                          style={{
-                            backgroundColor: isSelected
-                              ? Colors.primary.subtle
-                              : Colors.bg.muted,
-                            borderColor: isSelected
-                              ? Colors.primary.DEFAULT
-                              : Colors.border.DEFAULT,
-                            borderWidth: 2,
-                          }}
-                          className="rounded-xl px-4 py-3 min-h-[48px] flex-row items-center gap-3"
-                        >
-                          <Text className="text-2xl">{course.emoji}</Text>
-                          <View className="flex-1">
-                            <Text className="text-base font-bold text-text" numberOfLines={1}>
-                              {course.title}
-                            </Text>
-                            <Text className="text-sm text-text-muted">
-                              {course.totalLessons} bài học
-                            </Text>
-                          </View>
-                          {isSelected && (
-                            <Text className="text-lg font-extrabold text-primary">✓</Text>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                ) : (
-                  <Text className="text-sm text-text-muted">
-                    Chưa có khóa học nào. Quiz sẽ được lưu vào khóa học mới từ form phía trên.
-                  </Text>
-                )}
-              </View>
-
-              <View className="gap-3">
-                <SectionHeader label="Tài liệu bài giảng" />
-                <View className="flex-row gap-3">
-                  <View className="flex-1">
-                    <Button
-                      label="Chọn tài liệu"
-                      leftEmoji="📎"
-                      variant="outline"
-                      size="md"
-                      fullWidth
-                      onPress={handlePickDocument}
-                    />
-                  </View>
-                  {selectedAsset && (
-                    <TouchableOpacity
-                      onPress={handleClearDocument}
-                      activeOpacity={0.8}
-                      className="min-h-[48px] px-4 rounded-xl bg-error-subtle items-center justify-center"
-                    >
-                      <Text className="text-error font-bold">Xóa</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                <View
-                  style={{
-                    backgroundColor: selectedAsset
-                      ? Colors.success.subtle
-                      : Colors.bg.muted,
-                    borderColor: selectedAsset
-                      ? Colors.success.DEFAULT
-                      : Colors.border.DEFAULT,
-                    borderWidth: 1.5,
-                  }}
-                  className="rounded-xl px-4 py-3 min-h-[48px] justify-center"
-                >
-                  <Text
-                    className="text-base font-semibold text-text"
-                    numberOfLines={2}
-                  >
-                    {selectedAsset?.name ?? "Chưa chọn tài liệu"}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="gap-4">
-                <Input
-                  label="Số câu hỏi"
-                  leftEmoji="🔢"
-                  placeholder="10"
-                  value={String(numQuestions)}
-                  onChangeText={handleQuestionCountChange}
-                  keyboardType="number-pad"
-                  maxLength={2}
-                />
-
-                <View className="gap-3">
-                  <SectionHeader label="Độ khó quiz" />
-                  <View className="flex-row flex-wrap gap-2.5">
-                    {AI_DIFFICULTY_OPTIONS.map((opt) => {
-                      const isSelected = aiDifficulty === opt.value;
-                      return (
-                        <TouchableOpacity
-                          key={opt.value}
-                          onPress={() => setAiDifficulty(opt.value)}
-                          activeOpacity={0.8}
-                          style={{
-                            backgroundColor: isSelected
-                              ? Colors.primary.subtle
-                              : Colors.bg.muted,
-                            borderColor: isSelected
-                              ? Colors.primary.DEFAULT
-                              : Colors.border.DEFAULT,
-                            borderWidth: 2,
-                          }}
-                          className="rounded-xl px-4 py-3 min-h-[48px] items-center justify-center"
-                        >
-                          <Text
-                            className="text-base font-bold"
-                            style={{
-                              color: isSelected
-                                ? Colors.primary.DEFAULT
-                                : Colors.text.muted,
-                            }}
-                          >
-                            {opt.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                <View className="gap-3">
-                  <SectionHeader label="Ngôn ngữ" />
-                  <View className="flex-row gap-2.5">
-                    {LANGUAGE_OPTIONS.map((opt) => {
-                      const isSelected = language === opt.value;
-                      return (
-                        <TouchableOpacity
-                          key={opt.value}
-                          onPress={() => setLanguage(opt.value)}
-                          activeOpacity={0.8}
-                          style={{
-                            flex: 1,
-                            backgroundColor: isSelected
-                              ? Colors.info.subtle
-                              : Colors.bg.muted,
-                            borderColor: isSelected
-                              ? Colors.info.DEFAULT
-                              : Colors.border.DEFAULT,
-                            borderWidth: 2,
-                          }}
-                          className="rounded-xl px-4 py-3 min-h-[48px] items-center justify-center"
-                        >
-                          <Text
-                            className="text-base font-bold"
-                            style={{
-                              color: isSelected
-                                ? Colors.info.dark
-                                : Colors.text.muted,
-                            }}
-                          >
-                            {opt.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-
-                <Input
-                  label="Chủ đề (không bắt buộc)"
-                  leftEmoji="🏷️"
-                  placeholder="VD: Phân số, quang hợp, lịch sử Việt Nam..."
-                  value={subject}
-                  onChangeText={setSubject}
-                  maxLength={80}
-                />
-              </View>
-
-              <Button
-                label="Tạo quiz AI"
-                leftEmoji="✨"
-                variant="secondary"
-                size="lg"
-                fullWidth
-                disabled={!selectedAsset}
-                loading={isGenerating}
-                onPress={handleGenerateQuiz}
-              />
-
-              {aiError && (
-                <View
-                  style={{
-                    backgroundColor: Colors.error.subtle,
-                    borderColor: Colors.error.DEFAULT,
-                    borderWidth: 1.5,
-                  }}
-                  className="rounded-xl p-4"
-                >
-                  <Text className="text-base font-semibold" style={{ color: Colors.error.dark }}>
-                    {aiError}
-                  </Text>
-                </View>
-              )}
-
-              {aiResult && (
-                <MotiView
-                  from={{ opacity: 0, translateY: 10 }}
-                  animate={{ opacity: 1, translateY: 0 }}
-                  transition={{ type: "spring", damping: 20 }}
-                  className="gap-4"
-                >
-                  <View
-                    style={{
-                      backgroundColor: Colors.primary.subtle,
-                      borderColor: Colors.primary.DEFAULT,
-                      borderWidth: 1.5,
-                    }}
-                    className="rounded-2xl p-4 gap-3"
-                  >
-                    <View className="flex-row items-start gap-3">
-                      <Text className="text-3xl">📝</Text>
-                      <View className="flex-1 gap-1">
-                        <Text className="text-xl font-extrabold text-text">
-                          {aiResult.quiz.title}
-                        </Text>
-                        <Text className="text-sm text-text-muted">
-                          {aiResult.quiz.questions.length} câu • {aiResult.quiz.generated_from}
-                        </Text>
-                      </View>
-                    </View>
-                    <Text className="text-base text-text leading-6">
-                      {aiResult.quiz.summary}
-                    </Text>
-                  </View>
-
-                  {aiResult.validation_warnings.length > 0 && (
-                    <View
-                      style={{
-                        backgroundColor: Colors.warning.subtle,
-                        borderColor: Colors.warning.DEFAULT,
-                        borderWidth: 1.5,
-                      }}
-                      className="rounded-xl p-4 gap-2"
-                    >
-                      {aiResult.validation_warnings.map((warning) => (
-                        <Text
-                          key={warning}
-                          className="text-sm font-semibold"
-                          style={{ color: Colors.warning.dark }}
-                        >
-                          {warning}
-                        </Text>
-                      ))}
-                    </View>
-                  )}
-
-                  <View className="gap-3">
-                    <SectionHeader label="Preview câu hỏi" />
-                    {aiResult.quiz.questions.slice(0, 3).map((question, index) => (
-                      <View
-                        key={`${question.question}-${index}`}
-                        style={[Shadow.sm, { backgroundColor: Colors.bg.muted }]}
-                        className="rounded-xl p-4 gap-2"
-                      >
-                        <Text className="text-base font-bold text-text">
-                          Câu {index + 1}: {question.question}
-                        </Text>
-                        {question.choices.map((choice) => (
-                          <Text
-                            key={choice.id}
-                            className="text-sm text-text-muted"
-                          >
-                            {choice.id}. {choice.text}
-                          </Text>
-                        ))}
-                      </View>
-                    ))}
-                  </View>
-
-                  {renderSaveHint()}
-
-                  <View className="gap-3">
-                    <Button
-                      label="Lưu quiz thành lesson"
-                      leftEmoji="💾"
-                      variant="primary"
-                      size="lg"
-                      fullWidth
-                      disabled={!canSaveAiQuiz}
-                      loading={isSavingQuiz}
-                      onPress={handleSaveAiQuiz}
-                    />
-                    <Button
-                      label="Tạo lại"
-                      leftEmoji="🔄"
-                      variant="outline"
-                      size="md"
-                      fullWidth
-                      disabled={isSavingQuiz || isGenerating}
-                      onPress={handleResetAiQuiz}
-                    />
-                  </View>
-                </MotiView>
-              )}
-
-              {saveQuizError && (
-                <Text className="text-sm text-error text-center">
-                  {saveQuizError}
-                </Text>
-              )}
-            </MotiView>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
