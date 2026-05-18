@@ -291,7 +291,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
         level: row.level,
         streak: row.streak,
         longestStreak: row.longest_streak,
-        lastActiveDate: row.last_active_date,
+        lastActiveDate: row.last_active_date ?? "",
         isLoading: false,
       });
 
@@ -313,6 +313,8 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
 
     try {
       const state = get();
+
+      // 1. Sync overall progress
       const insertPayload: ProgressInsert = {
         user_id: userId,
         xp: state.xp,
@@ -321,17 +323,39 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
         level: state.level,
         streak: state.streak,
         longest_streak: state.longestStreak,
-        last_active_date: state.lastActiveDate,
+        last_active_date: state.lastActiveDate || null,
       };
-      const { error } = await (supabase.from("progress") as unknown as ProgressQueryBuilder).upsert(
+      const { error: progressError } = await (supabase.from("progress") as unknown as ProgressQueryBuilder).upsert(
         insertPayload,
         { onConflict: "user_id" }
       );
 
-      if (error) {
-        console.error("[syncProgress] Upsert failed:", error.message);
+      if (progressError) {
+        console.error("[syncProgress] Progress upsert failed:", progressError.message);
       } else {
         console.log("[syncProgress] Progress synced for user", userId);
+      }
+
+      // 2. Sync lesson completions to lesson_progress table
+      if (state.completedLessonIds.length > 0) {
+        const lessonProgressPayload = state.completedLessonIds.map((lessonId) => ({
+          user_id: userId,
+          lesson_id: lessonId,
+          is_completed: true,
+          completed_at: new Date().toISOString(),
+          score: null,
+          attempts: 1,
+        }));
+
+        const { error: lessonError } = await supabase
+          .from("lesson_progress")
+          .upsert(lessonProgressPayload, { onConflict: "user_id,lesson_id" });
+
+        if (lessonError) {
+          console.error("[syncProgress] Lesson progress upsert failed:", lessonError.message);
+        } else {
+          console.log("[syncProgress] Lesson progress synced:", state.completedLessonIds.length, "lessons");
+        }
       }
     } catch (err) {
       console.error("[syncProgress] Exception during sync:", err instanceof Error ? err.message : String(err));

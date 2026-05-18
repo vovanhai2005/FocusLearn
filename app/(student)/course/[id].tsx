@@ -38,10 +38,11 @@ export default function CourseDetailScreen() {
 
   if (!course) {
     return (
-      <SafeAreaView className="flex-1 bg-bg items-center justify-center gap-4">
+      <SafeAreaView className="flex-1 bg-bg items-center justify-center gap-4 px-5">
         <Text style={{ fontSize: 48 }}>😕</Text>
-        <Text className="text-xl font-bold text-text">Không tìm thấy khóa học</Text>
-        <TouchableOpacity onPress={() => router.back()} className="min-h-[48px] justify-center px-6">
+        <Text className="text-xl font-bold text-text text-center">Không tìm thấy khóa học</Text>
+        <Text className="text-base text-text-muted text-center">Khóa học này có thể đã bị xóa hoặc chưa được công bố</Text>
+        <TouchableOpacity onPress={() => router.back()} className="min-h-[48px] justify-center px-6" accessibilityLabel="Go back" accessibilityRole="button">
           <Text className="text-lg font-semibold text-primary">← Quay lại</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -69,6 +70,8 @@ export default function CourseDetailScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             className="flex-row items-center gap-2 mb-5 self-start min-h-[44px] items-center"
+            accessibilityLabel="Go back to courses list"
+            accessibilityRole="button"
           >
             <Text className="text-2xl text-white">←</Text>
             <Text className="text-base font-semibold text-white opacity-90">Quay lại</Text>

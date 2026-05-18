@@ -88,6 +88,9 @@ function CourseItem({
         onPress={() => router.push(`/(student)/course/${id}` as `/(student)/course/${string}`)}
         style={Shadow.md}
         className="bg-bg-card rounded-2xl border border-border overflow-hidden"
+        accessibilityLabel={`${title} course, ${completedLessons} of ${totalLessons} lessons completed`}
+        accessibilityRole="button"
+        accessibilityHint={`${difficulty} difficulty`}
       >
         <View className="flex-row items-center gap-4 p-4">
           <View
@@ -180,6 +183,9 @@ export default function CoursesScreen() {
                 borderWidth: 1.5,
               }}
               className="px-4 py-2 rounded-badge min-h-[36px] justify-center"
+              accessibilityLabel={`Filter courses by ${f}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: activeFilter === f }}
             >
               <Text
                 style={{

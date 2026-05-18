@@ -38,6 +38,7 @@ function rowToUser(row: {
   role: "student" | "teacher" | "parent";
   avatar_emoji: string;
   access_code: string;
+  grade?: number | null;
   created_at: string;
   updated_at: string;
 }): User {
@@ -47,6 +48,7 @@ function rowToUser(row: {
     role: row.role,
     avatarEmoji: row.avatar_emoji,
     accessCode: row.access_code,
+    grade: (row.grade ?? null) as User["grade"],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -121,9 +123,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // Validate role matches selection
       if (selectedRole && userRow.role !== selectedRole) {
         set({
-          error: `Mã số này thuộc về ${
-            userRow.role === "teacher" ? "giáo viên" : "học sinh"
-          }, không phải ${selectedRole === "teacher" ? "giáo viên" : "học sinh"}.`,
+          error: "Mã số không đúng. Hãy kiểm tra lại",
           isLoading: false,
         });
         return false;
@@ -270,7 +270,7 @@ export const selectAuthError = (s: AuthState) => s.error;
  */
 export function subscribeToAuthChanges(): () => void {
   if (!isSupabaseConfigured) {
-    return () => {};
+    return () => { };
   }
 
   const { data } = supabase.auth.onAuthStateChange((event) => {

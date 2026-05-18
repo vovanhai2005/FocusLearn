@@ -96,6 +96,7 @@ export default function TeacherLayout() {
       <Tabs.Screen name="students" />
       <Tabs.Screen name="reports" />
       <Tabs.Screen name="create" />
+      <Tabs.Screen name="course/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

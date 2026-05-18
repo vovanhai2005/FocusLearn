@@ -2,6 +2,7 @@ import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import { MotiView } from "moti";
 import { Button } from "@/components/ui/Button";
+import { GradeSelector } from "@/components/ui/GradeSelector";
 import { Input } from "@/components/ui/Input";
 import { Colors, Shadow } from "@/constants/theme";
 import {
@@ -11,6 +12,7 @@ import {
   type CourseColorOption,
   type CourseDifficulty,
 } from "@/components/features/teacher/teacherCreateOptions";
+import type { Grade } from "@/types";
 
 interface CourseSetupSectionProps {
   title: string;
@@ -18,6 +20,7 @@ interface CourseSetupSectionProps {
   selectedEmoji: string;
   selectedColor: CourseColorOption;
   courseDifficulty: CourseDifficulty;
+  selectedGrade: Grade | null;
   canCreate: boolean;
   isCreating: boolean;
   createError: string | null;
@@ -26,6 +29,7 @@ interface CourseSetupSectionProps {
   onEmojiChange: (value: string) => void;
   onColorChange: (value: CourseColorOption) => void;
   onDifficultyChange: (value: CourseDifficulty) => void;
+  onGradeChange: (value: Grade) => void;
   onCreate: () => void;
 }
 
@@ -267,14 +271,23 @@ function DifficultyPicker({
 }
 
 function CreateCourseAction({
+  title,
+  selectedGrade,
   canCreate,
   isCreating,
   createError,
   onCreate,
 }: Pick<
   CourseSetupSectionProps,
-  "canCreate" | "isCreating" | "createError" | "onCreate"
+  "title" | "selectedGrade" | "canCreate" | "isCreating" | "createError" | "onCreate"
 >) {
+  const hint =
+    title.trim().length < 3
+      ? "Tên khóa học phải có ít nhất 3 ký tự"
+      : !selectedGrade
+      ? "Vui lòng chọn lớp cho khóa học"
+      : null;
+
   return (
     <MotiView
       from={{ opacity: 0, translateY: 12 }}
@@ -291,9 +304,9 @@ function CreateCourseAction({
         loading={isCreating}
         onPress={onCreate}
       />
-      {!canCreate && (
+      {hint && (
         <Text className="text-sm text-text-muted text-center mt-2">
-          Tên khóa học phải có ít nhất 3 ký tự
+          {hint}
         </Text>
       )}
       {createError && (
@@ -320,6 +333,10 @@ export function CourseSetupSection(props: CourseSetupSectionProps) {
         onTitleChange={props.onTitleChange}
         onDescriptionChange={props.onDescriptionChange}
       />
+      <GradeSelector
+        selectedGrade={props.selectedGrade}
+        onGradeChange={props.onGradeChange}
+      />
       <EmojiPicker
         selectedEmoji={props.selectedEmoji}
         onEmojiChange={props.onEmojiChange}
@@ -333,6 +350,8 @@ export function CourseSetupSection(props: CourseSetupSectionProps) {
         onDifficultyChange={props.onDifficultyChange}
       />
       <CreateCourseAction
+        title={props.title}
+        selectedGrade={props.selectedGrade}
         canCreate={props.canCreate}
         isCreating={props.isCreating}
         createError={props.createError}
