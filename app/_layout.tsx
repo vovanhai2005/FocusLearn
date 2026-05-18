@@ -18,7 +18,10 @@ export default function RootLayout() {
   const hydrateProgress = useProgressStore((s) => s.hydrateProgress);
   const resetStreakIfNeeded = useProgressStore((s) => s.resetStreakIfNeeded);
   const syncProgressToSupabase = useProgressStore((s) => s.syncProgressToSupabase);
+  const coursesLoading = useCoursesStore((s) => s.isLoading);
+  const progressLoading = useProgressStore((s) => s.isLoading);
   const hydrateCourses = useCoursesStore((s) => s.hydrateCourses);
+  const coursesLoaded = useCoursesStore((s) => s.courses.length > 0);
   const resetCourses = useCoursesStore((s) => s.reset);
   const hydrateTeacherData = useTeacherStore((s) => s.hydrateTeacherData);
   const resetTeacherData = useTeacherStore((s) => s.reset);
@@ -36,9 +39,26 @@ export default function RootLayout() {
     return unsubscribe;
   }, []);
 
+  // Keep splash screen visible while loading critical data on login
   useEffect(() => {
-    SplashScreen.hideAsync().catch(() => {});
-  }, []);
+    const hideSplash = async () => {
+      // Only hide splash when:
+      // 1. User is loaded (auth resolved)
+      // 2. If logged in: courses and progress must be loaded
+      const shouldHide =
+        user !== undefined && // auth resolved (could be null/authenticated)
+        (
+          !user?.id || // Not logged in, safe to hide
+          (coursesLoaded && !progressLoading && !coursesLoading) // Logged in and data ready
+        );
+
+      if (shouldHide) {
+        await SplashScreen.hideAsync().catch(() => {});
+      }
+    };
+
+    hideSplash();
+  }, [user, coursesLoaded, progressLoading, coursesLoading]);
 
   useEffect(() => {
     // When user logs in, load their progress and courses

@@ -281,32 +281,68 @@ function ReadingView({
 // ─────────────────────────────────────────────────────────────
 
 function RealVideoPlayer({ videoUrl, onComplete }: { videoUrl: string; onComplete: () => void }) {
-  const player = useVideoPlayer(videoUrl, (p) => {
-    p.loop = false;
-  });
+  try {
+    const player = useVideoPlayer(videoUrl, (p) => {
+      p.loop = false;
+    });
 
-  return (
-    <View className="gap-4">
-      <MotiView
-        from={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: "spring", damping: 20 }}
-        style={[Shadow.md, { borderRadius: 16, overflow: "hidden" }]}
-        className="aspect-video bg-text"
-      >
-        <ExpoVideoView player={player} style={{ flex: 1 }} contentFit="contain" nativeControls />
-      </MotiView>
+    return (
+      <View className="gap-4">
+        <MotiView
+          from={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", damping: 20 }}
+          style={[Shadow.md, { borderRadius: 16, overflow: "hidden" }]}
+          className="aspect-video bg-text"
+        >
+          <ExpoVideoView player={player} style={{ flex: 1 }} contentFit="contain" nativeControls />
+        </MotiView>
 
-      <Button
-        label="Tôi đã xem xong!"
-        leftEmoji="✅"
-        variant="outline"
-        size="md"
-        fullWidth
-        onPress={onComplete}
-      />
-    </View>
-  );
+        <Button
+          label="Tôi đã xem xong!"
+          leftEmoji="✅"
+          variant="outline"
+          size="md"
+          fullWidth
+          onPress={onComplete}
+        />
+      </View>
+    );
+  } catch (error) {
+    console.error("[VideoPlayer] Error:", error);
+    return (
+      <View className="gap-4">
+        <MotiView
+          from={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", damping: 20 }}
+          style={[
+            Shadow.md,
+            {
+              borderRadius: 16,
+              overflow: "hidden",
+              backgroundColor: Colors.error.subtle,
+              borderColor: Colors.error.DEFAULT,
+              borderWidth: 2,
+            },
+          ]}
+          className="aspect-video items-center justify-center gap-3"
+        >
+          <Text style={{ fontSize: 48 }}>⚠️</Text>
+          <Text className="text-center font-semibold text-error">Video failed to load</Text>
+          <Text className="text-center text-sm text-error opacity-70">Please check your connection</Text>
+        </MotiView>
+        <Button
+          label="Tôi đã xem xong!"
+          leftEmoji="✅"
+          variant="outline"
+          size="md"
+          fullWidth
+          onPress={onComplete}
+        />
+      </View>
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -350,7 +386,15 @@ function VideoPlaceholder({ duration, onComplete }: { duration: number; onComple
 // VIDEO VIEW (DISPATCHER)
 // ─────────────────────────────────────────────────────────────
 
-function VideoView({ videoUrl, duration, onComplete }: { videoUrl?: string; duration: number; onComplete: () => void }) {
+function VideoView({
+  videoUrl,
+  duration,
+  onComplete,
+}: {
+  videoUrl?: string;
+  duration: number;
+  onComplete: () => void;
+}) {
   if (videoUrl) {
     return <RealVideoPlayer videoUrl={videoUrl} onComplete={onComplete} />;
   }
@@ -364,9 +408,21 @@ function VideoView({ videoUrl, duration, onComplete }: { videoUrl?: string; dura
 function QuizPlaceholder({ onComplete }: { onComplete: () => void }) {
   return (
     <View className="gap-5 items-center py-8">
-      <Text style={{ fontSize: 48 }}>📝</Text>
-      <Text className="text-xl font-bold text-text text-center">Bài tập đang được cập nhật</Text>
-      <Button label="Hoàn thành" variant="primary" size="lg" fullWidth onPress={onComplete} />
+      <MotiView
+        from={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: "spring", damping: 20 }}
+      >
+        <Text style={{ fontSize: 56 }}>📝</Text>
+      </MotiView>
+      <View className="items-center gap-2">
+        <Text className="text-2xl font-bold text-text text-center">Bài tập đang được cập nhật</Text>
+        <Text className="text-base text-text-muted text-center">Giáo viên của bạn đang chuẩn bị bài tập cho bạn. Hãy quay lại sau nhé!</Text>
+      </View>
+      <View className="bg-warning/20 rounded-2xl px-4 py-3 border border-warning/30">
+        <Text className="text-sm text-warning-dark font-medium text-center">💡 Bạn vẫn có thể hoàn thành bài học này</Text>
+      </View>
+      <Button label="Hoàn thành" leftEmoji="✅" variant="primary" size="lg" fullWidth onPress={onComplete} />
     </View>
   );
 }
@@ -493,6 +549,7 @@ export default function LessonScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [showCompletion, setShowCompletion] = useState(false);
   const [completionXp, setCompletionXp] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const markLessonComplete = useProgressStore((s) => s.markLessonComplete);
   const unlockBadge = useProgressStore((s) => s.unlockBadge);
@@ -516,10 +573,11 @@ export default function LessonScreen() {
 
   if (!lesson) {
     return (
-      <SafeAreaView className="flex-1 bg-bg items-center justify-center gap-4">
+      <SafeAreaView className="flex-1 bg-bg items-center justify-center gap-4 px-5">
         <Text style={{ fontSize: 48 }}>😕</Text>
-        <Text className="text-xl font-bold text-text">Không tìm thấy bài học</Text>
-        <TouchableOpacity onPress={() => router.back()} className="min-h-[48px] justify-center">
+        <Text className="text-xl font-bold text-text text-center">Không tìm thấy bài học</Text>
+        <Text className="text-base text-text-muted text-center">Bài học này có thể đã bị xóa hoặc chưa được công bố</Text>
+        <TouchableOpacity onPress={() => router.back()} className="min-h-[48px] justify-center" accessibilityLabel="Go back" accessibilityRole="button">
           <Text className="text-lg font-semibold text-primary">← Quay lại</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -537,6 +595,11 @@ export default function LessonScreen() {
   const courseTitle = course?.title ?? mockCourse?.title ?? "";
 
   function handleComplete(isPerfect = false) {
+    // Guard: prevent double-completion on fast clicks
+    if (isProcessing || showCompletion) return;
+
+    setIsProcessing(true);
+
     if (!isAlreadyCompleted) {
       const bonus = isPerfect ? XPConfig.perfectBonus : 0;
       const xpReward = lesson!.xpReward + bonus;
@@ -549,6 +612,7 @@ export default function LessonScreen() {
       setCompletionXp(lesson!.xpReward);
     }
     setShowCompletion(true);
+    setIsProcessing(false);
   }
 
   const typeLabel: Record<string, string> = {
@@ -574,6 +638,8 @@ export default function LessonScreen() {
             <TouchableOpacity
               onPress={() => router.back()}
               className="flex-row items-center gap-2 self-start min-h-[44px]"
+              accessibilityLabel="Go back to previous screen"
+              accessibilityRole="button"
             >
               <Text className="text-xl text-white">←</Text>
               <Text className="text-base font-semibold text-white opacity-90">Quay lại</Text>

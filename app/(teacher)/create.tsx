@@ -24,6 +24,7 @@ import { supabase, type Database } from "@/lib/supabase";
 import { useAiQuizStore } from "@/store/useAiQuizStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCoursesStore } from "@/store/useCoursesStore";
+import type { Grade } from "@/types";
 
 type CourseInsert = Database["public"]["Tables"]["courses"]["Insert"];
 type LessonInsert = Database["public"]["Tables"]["lessons"]["Insert"];
@@ -149,6 +150,7 @@ export default function CreateScreen() {
     useState<CourseColorOption>(COLOR_OPTIONS[0]);
   const [courseDifficulty, setCourseDifficulty] =
     useState<CourseDifficulty>("easy");
+  const [selectedGrade, setSelectedGrade] = useState<Grade | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
@@ -162,7 +164,7 @@ export default function CreateScreen() {
     }
   }, [params.mode]);
 
-  const canCreate = title.trim().length >= 3;
+  const canCreate = title.trim().length >= 3 && selectedGrade !== null;
   const teacherCourses = useMemo(
     () => courses.filter((course) => course.teacherId === user?.id),
     [courses, user?.id]
@@ -181,6 +183,9 @@ export default function CreateScreen() {
     if (!user) {
       throw new Error("Bạn cần đăng nhập bằng tài khoản giáo viên.");
     }
+    if (!selectedGrade) {
+      throw new Error("Vui lòng chọn lớp cho khóa học.");
+    }
 
     const payload: CourseInsert = {
       title: title.trim(),
@@ -188,6 +193,7 @@ export default function CreateScreen() {
       emoji: selectedEmoji,
       color_key: selectedColor.key,
       teacher_id: user.id,
+      grade: selectedGrade,
       difficulty: difficultyForCourse,
       total_lessons: 0,
       estimated_minutes: 0,
@@ -514,6 +520,7 @@ export default function CreateScreen() {
                 selectedEmoji={selectedEmoji}
                 selectedColor={selectedColor}
                 courseDifficulty={courseDifficulty}
+                selectedGrade={selectedGrade}
                 canCreate={canCreate}
                 isCreating={isCreating}
                 createError={createError}
@@ -522,6 +529,7 @@ export default function CreateScreen() {
                 onEmojiChange={setSelectedEmoji}
                 onColorChange={setSelectedColor}
                 onDifficultyChange={setCourseDifficulty}
+                onGradeChange={setSelectedGrade}
                 onCreate={handleCreate}
               />
             ) : (

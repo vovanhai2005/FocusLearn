@@ -231,6 +231,8 @@ export default function DashboardScreen() {
               activeOpacity={0.84}
               style={[Shadow.sm, { backgroundColor: Colors.error.DEFAULT }]}
               className="rounded-xl px-3 py-2 min-h-[42px] justify-center"
+              accessibilityLabel="Sign out"
+              accessibilityRole="button"
             >
               <Text className="text-sm font-semibold text-white">Thoát 👋</Text>
             </TouchableOpacity>
@@ -260,7 +262,9 @@ export default function DashboardScreen() {
               </View>
               <TouchableOpacity
                 onPress={() => hydrateTeacherData(user?.id || "")}
-                className="bg-error rounded-lg py-2 px-4 self-start"
+                className="bg-error rounded-lg py-2 px-4 self-start min-h-[44px] justify-center"
+                accessibilityLabel="Retry loading teacher data"
+                accessibilityRole="button"
               >
                 <Text className="text-white font-semibold text-sm">Thử lại</Text>
               </TouchableOpacity>

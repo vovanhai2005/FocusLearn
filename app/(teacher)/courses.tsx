@@ -69,7 +69,14 @@ function CourseCard({
       animate={{ opacity: 1, translateY: 0 }}
       transition={{ delay: index * 70, type: "spring", damping: 20 }}
       style={Shadow.sm}
-      className="rounded-2xl border border-border bg-bg-card p-4"
+      className="rounded-2xl border border-border bg-bg-card overflow-hidden"
+    >
+    <TouchableOpacity
+      activeOpacity={0.82}
+      onPress={() => router.push(`/(teacher)/course/${course.id}` as `/(teacher)/course/${string}`)}
+      accessibilityLabel={`Quản lý khóa học ${course.title}`}
+      accessibilityRole="button"
+      className="p-4"
     >
       <View className="flex-row gap-3">
         <View
@@ -138,6 +145,13 @@ function CourseCard({
           ) : null}
         </View>
       ) : null}
+
+      {/* Manage hint */}
+      <View className="mt-3 flex-row items-center gap-1">
+        <Text className="text-xs font-semibold text-primary">Nhấn để quản lý bài học</Text>
+        <Text className="text-xs text-primary">→</Text>
+      </View>
+    </TouchableOpacity>
     </MotiView>
   );
 }

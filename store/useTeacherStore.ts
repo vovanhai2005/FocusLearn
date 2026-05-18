@@ -38,6 +38,7 @@ function rowToUser(row: UsersRow): User {
     role: row.role as "student" | "teacher" | "parent",
     avatarEmoji: row.avatar_emoji,
     accessCode: row.access_code,
+    grade: (row.grade ?? null) as User["grade"],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

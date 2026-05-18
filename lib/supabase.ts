@@ -61,6 +61,7 @@ type CoursesRow = {
   emoji: string;
   color_key: string;
   teacher_id: string;
+  grade: number;             // Lớp học (1–12)
   total_lessons: number;
   estimated_minutes: number;
   difficulty: "easy" | "medium" | "hard";
@@ -81,6 +82,7 @@ type LessonsRow = {
   order: number;
   content: string | null;
   video_url: string | null;
+  cf_video_id: string | null;   // Cloudflare Stream video UID
   is_published: boolean;
   created_at: string;
   updated_at: string;
@@ -95,7 +97,7 @@ type ProgressRow = {
   level: number;
   streak: number;
   longest_streak: number;
-  last_active_date: string;
+  last_active_date: string | null;  // nullable — empty on first sync before any activity
   created_at: string;
   updated_at: string;
 };
@@ -247,7 +249,9 @@ export interface Database {
       };
       lessons: {
         Row: LessonsRow;
-        Insert: Omit<LessonsRow, "id" | "created_at" | "updated_at">;
+        Insert: Omit<LessonsRow, "id" | "created_at" | "updated_at" | "cf_video_id"> & {
+          cf_video_id?: string | null;
+        };
         Update: Partial<Omit<LessonsRow, "id" | "created_at" | "updated_at">>;
         Relationships: [];
       };
