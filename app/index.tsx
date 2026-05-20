@@ -17,6 +17,7 @@ export default function Index() {
   const isLoading = useAuthStore((s) => s.isLoading);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const role = useAuthStore((s) => s.role);
+  const user = useAuthStore((s) => s.user);
 
   // Loading state while restoring session from AsyncStorage
   if (isLoading) {
@@ -32,7 +33,11 @@ export default function Index() {
     if (role === "teacher") {
       return <Redirect href="/(teacher)/dashboard" />;
     }
-    // student or parent both go to student home for MVP
+    // Student/parent: check if grade is set
+    if ((role === "student" || role === "parent") && user?.grade === null) {
+      return <Redirect href="/(auth)/select-grade" />;
+    }
+    // student or parent with grade go to student home
     return <Redirect href="/(student)/home" />;
   }
 
