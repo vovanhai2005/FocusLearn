@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import type { Course, Lesson, LessonType } from "@/types";
 import { supabase, type Database } from "@/lib/supabase";
+import { useAuthStore } from "@/store/useAuthStore";
 
 type CoursesRow = Database["public"]["Tables"]["courses"]["Row"];
 type LessonsRow = Database["public"]["Tables"]["lessons"]["Row"];
@@ -67,6 +68,7 @@ interface CoursesState {
   courses: Course[];
   lessons: Lesson[];
   isLoading: boolean;
+  hasHydrated: boolean;
   error: string | null;
 
   hydrateCourses: () => Promise<void>;
@@ -90,30 +92,57 @@ export const useCoursesStore = create<CoursesState>((set, get) => ({
   courses: [],
   lessons: [],
   isLoading: false,
+  hasHydrated: false,
   error: null,
 
   hydrateCourses: async () => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true, hasHydrated: false, error: null });
 
     try {
-      const { data: coursesData, error: coursesError } = await supabase
+      const user = useAuthStore.getState().user;
+
+      let coursesQuery = supabase
         .from("courses")
         .select("*")
-        .eq("is_published", true)
+        .eq("is_published", true);
+
+      if (user?.role === "student") {
+        if (!user.grade) {
+          set({
+            courses: [],
+            lessons: [],
+            isLoading: false,
+            hasHydrated: true,
+          });
+          return;
+        }
+
+        coursesQuery = coursesQuery.eq("grade", user.grade);
+      } else if (user?.role === "teacher") {
+        coursesQuery = coursesQuery.eq("teacher_id", user.id);
+      }
+
+      const { data: coursesData, error: coursesError } = await coursesQuery
         .order("created_at", { ascending: false });
 
       if (coursesError) throw coursesError;
 
-      const { data: lessonsData, error: lessonsError } = await supabase
-        .from("lessons")
-        .select("*")
-        .eq("is_published", true)
-        .order("order", { ascending: true });
-
-      if (lessonsError) throw lessonsError;
-
       const convertedCourses = (coursesData || []).map(rowToCourse);
-      const convertedLessons = (lessonsData || []).map(rowToLesson);
+      const courseIds = convertedCourses.map((course) => course.id);
+
+      let convertedLessons: Lesson[] = [];
+      if (courseIds.length > 0) {
+        const { data: lessonsData, error: lessonsError } = await supabase
+          .from("lessons")
+          .select("*")
+          .eq("is_published", true)
+          .in("course_id", courseIds)
+          .order("order", { ascending: true });
+
+        if (lessonsError) throw lessonsError;
+
+        convertedLessons = (lessonsData || []).map(rowToLesson);
+      }
 
       // Populate lessonIds for each course
       const coursesWithLessons = convertedCourses.map((course) => ({
@@ -127,10 +156,11 @@ export const useCoursesStore = create<CoursesState>((set, get) => ({
         courses: coursesWithLessons,
         lessons: convertedLessons,
         isLoading: false,
+        hasHydrated: true,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch courses";
-      set({ error: message, isLoading: false });
+      set({ error: message, isLoading: false, hasHydrated: true });
     }
   },
 
@@ -151,6 +181,7 @@ export const useCoursesStore = create<CoursesState>((set, get) => ({
       courses: [],
       lessons: [],
       isLoading: false,
+      hasHydrated: false,
       error: null,
     });
   },

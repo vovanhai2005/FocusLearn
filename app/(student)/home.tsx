@@ -143,7 +143,31 @@ export default function HomeScreen() {
         completedIds = progressRows?.map((r) => r.lesson_id) ?? [];
       }
 
-      // 2. Query published lessons not yet completed
+      // 2. Limit lessons to published courses visible to this student grade.
+      let coursesQuery = supabase
+        .from("courses")
+        .select("id")
+        .eq("is_published", true);
+
+      if (user?.role === "student") {
+        if (!user.grade) {
+          setContinueLessons([]);
+          return;
+        }
+
+        coursesQuery = coursesQuery.eq("grade", user.grade);
+      }
+
+      const { data: courseRows, error: coursesError } = await coursesQuery;
+      if (coursesError) throw coursesError;
+
+      const courseIds = courseRows?.map((course) => course.id) ?? [];
+      if (courseIds.length === 0) {
+        setContinueLessons([]);
+        return;
+      }
+
+      // 3. Query published lessons not yet completed
       type LessonSelect = {
         id: string;
         title: string;
@@ -157,6 +181,7 @@ export default function HomeScreen() {
         .from("lessons")
         .select("id, title, emoji, type, duration_seconds, xp_reward")
         .eq("is_published", true)
+        .in("course_id", courseIds)
         .order("order", { ascending: true })
         .limit(6);
 
@@ -182,7 +207,7 @@ export default function HomeScreen() {
     } finally {
       setLessonsLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.grade, user?.id, user?.role]);
 
   useEffect(() => {
     fetchContinueLessons();
