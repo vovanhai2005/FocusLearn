@@ -11,8 +11,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { MotiView } from "moti";
 import { Colors, Shadow } from "@/constants/theme";
+import { GRADE_OPTIONS } from "@/types";
 import { useProgressStore } from "@/store/useProgressStore";
 import { useCoursesStore } from "@/store/useCoursesStore";
+import { useAuthStore } from "@/store/useAuthStore";
 
 // ─────────────────────────────────────────────────────────────
 // HELPERS
@@ -128,8 +130,13 @@ function CourseItem({
 
 export default function CoursesScreen() {
   const [activeFilter, setActiveFilter] = useState<Filter>("Tất cả");
+  const user = useAuthStore((s) => s.user);
   const completedLessonIds = useProgressStore((s) => s.completedLessonIds);
   const { courses, isLoading, error, hydrateCourses } = useCoursesStore((s) => ({ courses: s.courses, isLoading: s.isLoading, error: s.error, hydrateCourses: s.hydrateCourses }));
+
+  const gradeLabel = user?.grade
+    ? GRADE_OPTIONS.find((g) => g.value === user.grade)?.label || "Không xác định"
+    : "Không xác định";
 
   // Build display list with real completion counts from store
   const displayCourses = courses.map((c) => ({
@@ -159,9 +166,19 @@ export default function CoursesScreen() {
           className="px-5 pt-6 pb-2 gap-1"
         >
           <Text className="text-4xl font-extrabold text-text">📚 Khóa học</Text>
-          <Text className="text-base text-text-muted">
-            {isLoading ? "Đang tải..." : `${courses.length} khóa học của bạn`}
-          </Text>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-base text-text-muted">
+              {isLoading ? "Đang tải..." : `${courses.length} khóa học`}
+            </Text>
+            <View
+              style={{ backgroundColor: Colors.info.subtle, borderColor: Colors.info.DEFAULT, borderWidth: 1 }}
+              className="px-3 py-1 rounded-full"
+            >
+              <Text style={{ color: Colors.info.dark, fontSize: 13, fontWeight: "600" }}>
+                {gradeLabel}
+              </Text>
+            </View>
+          </View>
         </MotiView>
 
         {/* ── Filter chips ─────────────────────────────────── */}
