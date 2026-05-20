@@ -21,7 +21,7 @@ export default function RootLayout() {
   const coursesLoading = useCoursesStore((s) => s.isLoading);
   const progressLoading = useProgressStore((s) => s.isLoading);
   const hydrateCourses = useCoursesStore((s) => s.hydrateCourses);
-  const coursesLoaded = useCoursesStore((s) => s.courses.length > 0);
+  const coursesReady = useCoursesStore((s) => s.hasHydrated);
   const resetCourses = useCoursesStore((s) => s.reset);
   const hydrateTeacherData = useTeacherStore((s) => s.hydrateTeacherData);
   const resetTeacherData = useTeacherStore((s) => s.reset);
@@ -49,7 +49,7 @@ export default function RootLayout() {
         user !== undefined && // auth resolved (could be null/authenticated)
         (
           !user?.id || // Not logged in, safe to hide
-          (coursesLoaded && !progressLoading && !coursesLoading) // Logged in and data ready
+          (coursesReady && !progressLoading && !coursesLoading) // Logged in and data ready
         );
 
       if (shouldHide) {
@@ -58,7 +58,7 @@ export default function RootLayout() {
     };
 
     hideSplash();
-  }, [user, coursesLoaded, progressLoading, coursesLoading]);
+  }, [user, coursesReady, progressLoading, coursesLoading]);
 
   useEffect(() => {
     // When user logs in, load their progress and courses
